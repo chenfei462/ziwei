@@ -1,0 +1,14 @@
+{
+  "version": "v0.1",
+  "professional": {
+    "prefix": "依据触发规则链，本段只做结构解释，不输出绝对预测。",
+    "advice_suffix": "本结果仅供自我观察和沟通参考。"
+  },
+  "entertainment": {
+    "prefix": "用轻量方式看，这是一张结构提示卡，不是定论。",
+    "advice_suffix": "适合当作复盘提示，不替代现实判断。"
+  },
+  "safety": {
+    "default_notice": "仅供结构参考，不作为医疗、法律、投资或婚姻重大决策依据。"
+  }
+}

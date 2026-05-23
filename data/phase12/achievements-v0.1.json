@@ -1,0 +1,29 @@
+{
+  "version": "v0.1",
+  "achievements": [
+    {
+      "achievement_id": "achievement_daily_first_checkin",
+      "label": "First Daily Check-in",
+      "target": 1
+    },
+    {
+      "achievement_id": "achievement_three_daily_quests",
+      "label": "Three Gentle Quests",
+      "target": 3
+    },
+    {
+      "achievement_id": "achievement_star_atlas_reader",
+      "label": "Star Atlas Reader",
+      "target": 1
+    },
+    {
+      "achievement_id": "achievement_daily_share_intent",
+      "label": "Daily Share Intent",
+      "target": 1
+    }
+  ],
+  "privacy": {
+    "stores_full_birth_profile": false,
+    "stores_video_frame": false
+  }
+}

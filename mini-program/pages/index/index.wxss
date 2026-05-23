@@ -1,0 +1,16 @@
+.shell {
+  min-height: 100vh;
+  background: #10130f;
+}
+
+.title {
+  padding: 20rpx 24rpx 6rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.copy {
+  padding: 0 24rpx 16rpx;
+  color: #aab2a0;
+  font-size: 24rpx;
+}

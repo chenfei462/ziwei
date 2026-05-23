@@ -1,0 +1,33 @@
+{
+  "version": "v0.1",
+  "phase": "phase9_payments_orders_membership",
+  "currency": "cny",
+  "provider": "stripe_checkout",
+  "packages": [
+    {
+      "package_id": "single_report",
+      "tier_id": "starter_19",
+      "amount_cents": 1900,
+      "entitlements": ["report_revisit", "3_export_previews", "favorite_report"]
+    },
+    {
+      "package_id": "single_report",
+      "tier_id": "standard_49",
+      "amount_cents": 4900,
+      "entitlements": ["report_revisit", "3_export_previews", "favorite_report"]
+    },
+    {
+      "package_id": "light_membership",
+      "tier_id": "premium_99",
+      "amount_cents": 9900,
+      "entitlements": ["report_revisit", "10_export_previews", "favorite_report", "light_membership_badge"]
+    }
+  ],
+  "reserved_providers": ["wechat_pay_reserved", "alipay_reserved"],
+  "privacy_defaults": {
+    "store_full_birth_date": false,
+    "store_birth_time": false,
+    "store_location_detail": false,
+    "store_video_frame": false
+  }
+}

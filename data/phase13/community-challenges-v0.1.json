@@ -1,0 +1,36 @@
+{
+  "version": "v0.1",
+  "challenges": [
+    {
+      "challenge_id": "challenge_7_day_stargarden",
+      "title": "7-Day Stargarden Challenge",
+      "target_count": 7,
+      "activity_scope": "daily low-risk observation",
+      "share_card_enabled": true,
+      "safety_flags": ["daily_observation_only", "avoid_absolute_prediction"]
+    },
+    {
+      "challenge_id": "challenge_seasonal_theme",
+      "title": "Seasonal Theme Challenge",
+      "target_count": 3,
+      "activity_scope": "festival and seasonal reflection cards",
+      "share_card_enabled": true,
+      "safety_flags": ["daily_observation_only", "major_decision_guard"]
+    },
+    {
+      "challenge_id": "challenge_star_atlas_collection",
+      "title": "Star Atlas Collection",
+      "target_count": 5,
+      "activity_scope": "source-linked atlas card collection",
+      "share_card_enabled": true,
+      "safety_flags": ["avoid_absolute_prediction", "privacy_redaction_required"]
+    }
+  ],
+  "excluded_scope": [
+    "native iOS or Android app",
+    "full WeChat mini program",
+    "free-form community posting",
+    "private messages",
+    "professional daily event prediction"
+  ]
+}

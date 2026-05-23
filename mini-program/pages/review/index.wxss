@@ -1,0 +1,18 @@
+.review {
+  min-height: 100vh;
+  padding: 28rpx;
+  background: #10130f;
+}
+
+.heading {
+  margin-bottom: 18rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.item {
+  margin-bottom: 14rpx;
+  color: #aab2a0;
+  font-size: 26rpx;
+  line-height: 1.5;
+}

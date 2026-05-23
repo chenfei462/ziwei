@@ -1,0 +1,31 @@
+{
+  "default_profile_id": "default_ziwei_v0_1",
+  "profiles": [
+    {
+      "profile_id": "default_ziwei_v0_1",
+      "label": "Default Zi Wei v0.1",
+      "version_id": "rules_v0.2",
+      "consultant_review_status": "confirmed",
+      "school_id": "default_ziwei_v0_1",
+      "zi_hour_day_boundary": "civil_midnight",
+      "leap_month_policy": "same_month_number",
+      "true_solar_time_policy": "disabled",
+      "four_transform_policy": "default_stem",
+      "interpretation_style": "balanced_modern",
+      "risk_note": "Production baseline profile."
+    },
+    {
+      "profile_id": "experimental_sanhe_v0_1",
+      "label": "Experimental Sanhe v0.1",
+      "version_id": "rules_v0.2-exp",
+      "consultant_review_status": "experimental",
+      "school_id": "experimental_sanhe_v0_1",
+      "zi_hour_day_boundary": "late_zi_next_day",
+      "leap_month_policy": "split_leap_month",
+      "true_solar_time_policy": "optional",
+      "four_transform_policy": "experimental_stem_variant",
+      "interpretation_style": "classical_source_first",
+      "risk_note": "Comparison-only candidate until consultant approval."
+    }
+  ]
+}

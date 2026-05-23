@@ -1,0 +1,15 @@
+{
+  "version": "v0.1",
+  "start_url": "/phase13",
+  "offline_fallback": "/offline",
+  "display": "standalone",
+  "install_states": ["unsupported", "prompt_available", "installed", "dismissed"],
+  "privacy_defaults": {
+    "hide_full_birth_date": true,
+    "hide_birth_time": true,
+    "hide_location_detail": true,
+    "store_video_frame": false,
+    "store_full_birth_profile": false
+  },
+  "mobile_entry_points": ["/phase13", "/share/{id}", "/offline"]
+}

@@ -1,0 +1,139 @@
+import { describe, expect, test } from "vitest";
+import { POST as createChartPost } from "../src/app/api/chart/create/route.js";
+import { POST as synastryPost } from "../src/app/api/synastry/create/route.js";
+import { POST as timelinePost } from "../src/app/api/timeline/interpret/route.js";
+
+const primaryChartBody = {
+  birth_profile: {
+    display_name: "Phase 7 route primary",
+    calendar_type: "gregorian",
+    birth_date: "2000-08-16",
+    birth_time: "03:30",
+    timezone: "Asia/Shanghai",
+    location: {
+      name: "Shanghai",
+      longitude: 121.4737,
+      latitude: 31.2304
+    },
+    is_leap_month: false,
+    true_solar_time_enabled: false,
+    gender_rule: "traditional_male"
+  }
+};
+
+const partnerChartBody = {
+  birth_profile: {
+    display_name: "Phase 7 route partner",
+    calendar_type: "gregorian",
+    birth_date: "1998-11-02",
+    birth_time: "22:45",
+    timezone: "Asia/Shanghai",
+    location: {
+      name: "Beijing",
+      longitude: 116.4074,
+      latitude: 39.9042
+    },
+    is_leap_month: false,
+    true_solar_time_enabled: false,
+    gender_rule: "traditional_female"
+  }
+};
+
+describe("phase 7 synastry and timeline route handlers", () => {
+  test("create synastry and timeline cards from chart snapshots with privacy defaults", async () => {
+    const primaryResponse = await createChartPost(
+      new Request("http://local/api/chart/create", {
+        method: "POST",
+        body: JSON.stringify(primaryChartBody)
+      })
+    );
+    const primary = await primaryResponse.json();
+
+    const partnerResponse = await createChartPost(
+      new Request("http://local/api/chart/create", {
+        method: "POST",
+        body: JSON.stringify(partnerChartBody)
+      })
+    );
+    const partner = await partnerResponse.json();
+
+    const synastryResponse = await synastryPost(
+      new Request("http://local/api/synastry/create", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "professional",
+          primary: {
+            label: "Primary",
+            chart_id: primary.chart_id,
+            chart: primary.chart,
+            consent: { agreed: true, no_sensitive_birth_data: true }
+          },
+          partner: {
+            label: "Partner",
+            chart_id: partner.chart_id,
+            chart: partner.chart,
+            consent: { agreed: true, no_sensitive_birth_data: true }
+          }
+        })
+      })
+    );
+    const synastry = await synastryResponse.json();
+
+    const timelineResponse = await timelinePost(
+      new Request("http://local/api/timeline/interpret", {
+        method: "POST",
+        body: JSON.stringify({
+          chart_id: primary.chart_id,
+          chart: primary.chart,
+          year: 2027,
+          month: 5,
+          mode: "entertainment",
+          palace_id: "career"
+        })
+      })
+    );
+    const timeline = await timelineResponse.json();
+
+    expect(synastryResponse.status).toBe(201);
+    expect(synastry.result.status).toBe("ready");
+    expect(synastry.share_card.title).toContain("合盘");
+    expect(timelineResponse.status).toBe(200);
+    expect(timeline.annual_theme.title).toContain("2027");
+    expect(timeline.share_card.title).toContain("年度主题");
+    expect(JSON.stringify({ synastry, timeline })).not.toContain("2000-08-16");
+    expect(JSON.stringify({ synastry, timeline })).not.toContain("03:30");
+    expect(JSON.stringify({ synastry, timeline })).not.toContain("Shanghai");
+  });
+
+  test("returns shared error envelopes for missing consent and invalid timeline month", async () => {
+    const missingConsentResponse = await synastryPost(
+      new Request("http://local/api/synastry/create", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "professional",
+          primary: { label: "A", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } },
+          partner: { label: "B", chart_id: "missing", consent: { agreed: false, no_sensitive_birth_data: true } }
+        })
+      })
+    );
+    const missingConsent = await missingConsentResponse.json();
+
+    const invalidMonthResponse = await timelinePost(
+      new Request("http://local/api/timeline/interpret", {
+        method: "POST",
+        body: JSON.stringify({
+          chart_id: "missing",
+          year: 2027,
+          month: 13,
+          mode: "professional"
+        })
+      })
+    );
+    const invalidMonth = await invalidMonthResponse.json();
+
+    expect(missingConsentResponse.status).toBe(400);
+    expect(missingConsent.error).toMatchObject({ code: "SYNASTRY_CONSENT_REQUIRED", field: "consent" });
+    expect(invalidMonthResponse.status).toBe(400);
+    expect(invalidMonth.error).toMatchObject({ code: "INVALID_TIMELINE_MONTH", field: "month" });
+  });
+});

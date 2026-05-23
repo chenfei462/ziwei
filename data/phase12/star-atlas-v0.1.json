@@ -1,0 +1,20 @@
+{
+  "version": "v0.1",
+  "coverage": {
+    "major_stars": 14,
+    "transforms": 4,
+    "patterns": 1
+  },
+  "privacy": {
+    "stores_full_birth_profile": false,
+    "stores_video_frame": false
+  },
+  "cards": [
+    { "card_id": "star_zi_wei", "label": "Zi Wei", "category": "major_star", "knowledge_node_id": "star_zi_wei" },
+    { "card_id": "star_tian_ji", "label": "Tian Ji", "category": "major_star", "knowledge_node_id": "star_tian_ji" },
+    { "card_id": "star_tai_yang", "label": "Tai Yang", "category": "major_star", "knowledge_node_id": "star_tai_yang" },
+    { "card_id": "star_wu_qu", "label": "Wu Qu", "category": "major_star", "knowledge_node_id": "star_wu_qu" },
+    { "card_id": "transform_lu", "label": "Hua Lu", "category": "transform", "knowledge_node_id": "transform_lu" },
+    { "card_id": "pattern_sanfang_sizheng", "label": "San Fang Si Zheng", "category": "pattern", "knowledge_node_id": "pattern_sanfang_sizheng" }
+  ]
+}

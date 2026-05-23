@@ -1,0 +1,31 @@
+{
+  "version": "v0.1",
+  "phase": "phase14",
+  "formats": [
+    {
+      "share_format": "mini_program_card",
+      "surfaces": ["wechat_group", "mini_program"],
+      "fields": ["title", "summary", "path", "privacy_note", "safety_flags"],
+      "default_copy_boundary": "Traditional culture star card and self-observation tool."
+    },
+    {
+      "share_format": "h5_poster",
+      "surfaces": ["short_video", "creator_homepage", "organic"],
+      "fields": ["title", "summary", "keywords", "qr_payload", "privacy_note"],
+      "default_copy_boundary": "Shareable H5 poster without full birth profile or platform-sensitive claims."
+    },
+    {
+      "share_format": "qr_landing",
+      "surfaces": ["qr_event", "creator_homepage", "wechat_group"],
+      "fields": ["title", "summary", "qr_payload", "campaign", "privacy_note"],
+      "default_copy_boundary": "Offline QR landing page for lightweight daily observation and challenge join."
+    }
+  ],
+  "privacy_defaults": {
+    "hides_full_birth_date": true,
+    "hides_birth_time": true,
+    "hides_location_detail": true,
+    "stores_video_frame": false,
+    "stores_full_birth_profile": false
+  }
+}

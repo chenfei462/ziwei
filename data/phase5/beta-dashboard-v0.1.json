@@ -1,0 +1,41 @@
+{
+  "version": "v0.1",
+  "phase": "phase5_beta_commercial_validation",
+  "metrics": [
+    {
+      "id": "active_sessions",
+      "label": "Active beta sessions",
+      "source": "beta event log",
+      "privacy": "session id only, no full birth data"
+    },
+    {
+      "id": "share_cards_created",
+      "label": "Share cards created",
+      "source": "POST /api/beta/share-card",
+      "privacy": "hides full birth date, birth time, and location detail"
+    },
+    {
+      "id": "favorites_saved",
+      "label": "Favorites saved",
+      "source": "POST /api/beta/favorite",
+      "privacy": "stores chart id and palace id only"
+    },
+    {
+      "id": "report_intents",
+      "label": "Report purchase intents",
+      "source": "POST /api/beta/report-intent",
+      "privacy": "intent-only, no real payment"
+    },
+    {
+      "id": "closed_test_completion_rate",
+      "label": "Closed-test completion rate",
+      "source": "GET /api/feedback",
+      "privacy": "feedback text redacts date, time, and image payloads"
+    }
+  ],
+  "targets": {
+    "completion_rate_target": 0.6,
+    "share_rate_target": 0.2,
+    "report_intent_rate_target": 0.05
+  }
+}

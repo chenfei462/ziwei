@@ -1,0 +1,5 @@
+<view class="shell">
+  <view class="title">Zi Wei Stargarden</view>
+  <view class="copy">Traditional culture star cards and self-observation tool.</view>
+  <web-view src="{{webUrl}}"></web-view>
+</view>

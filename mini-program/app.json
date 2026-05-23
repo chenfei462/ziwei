@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/review/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Zi Wei Stargarden",
+    "navigationBarBackgroundColor": "#10130f",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#10130f"
+  },
+  "permission": {
+    "scope.userInfo": {
+      "desc": "Used only to connect your mini program session with your own member record."
+    }
+  }
+}

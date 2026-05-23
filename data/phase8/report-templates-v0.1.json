@@ -1,0 +1,44 @@
+{
+  "version": "v0.1",
+  "phase": "phase8_report_export_creator_workbench",
+  "templates": [
+    {
+      "template_id": "single_chart_six_palaces",
+      "report_type": "single_chart",
+      "title": "Single chart six-palace report",
+      "sections": ["life", "career", "wealth", "spouse", "fortune", "migration"],
+      "required_fields": ["basis", "interpretation", "trace", "safety_flags", "privacy_note", "share_blocks"],
+      "supported_formats": ["html", "pdf"],
+      "deferred_formats": ["docx"],
+      "review_required": true
+    },
+    {
+      "template_id": "synastry_comparison",
+      "report_type": "synastry",
+      "title": "Synastry comparison report",
+      "sections": ["communication_style", "cooperation_rhythm", "complementary_points", "boundary_reminders"],
+      "required_fields": ["basis", "interpretation", "trace", "safety_flags", "privacy_note", "share_blocks"],
+      "supported_formats": ["html", "pdf"],
+      "deferred_formats": ["docx"],
+      "review_required": true
+    },
+    {
+      "template_id": "timeline_annual_monthly",
+      "report_type": "timeline",
+      "title": "Annual and monthly theme report",
+      "sections": ["annual_theme", "monthly_observation"],
+      "required_fields": ["basis", "interpretation", "trace", "safety_flags", "privacy_note", "share_blocks"],
+      "supported_formats": ["html", "pdf"],
+      "deferred_formats": ["docx"],
+      "review_required": true
+    }
+  ],
+  "privacy_defaults": {
+    "hide_full_birth_date": true,
+    "hide_birth_time": true,
+    "hide_location_detail": true,
+    "store_video_frame": false,
+    "store_full_birth_profile": false,
+    "real_payment_enabled": false
+  }
+}

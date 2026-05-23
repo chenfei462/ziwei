@@ -1,0 +1,25 @@
+{
+  "version": "v0.1",
+  "phase": "phase6_ar_stage_immersive_extension",
+  "display_modes": ["stage_screen", "ar_mobile"],
+  "performance_targets": {
+    "sync_latency_ms": 250,
+    "ar_startup_ms": 3000,
+    "stage_min_fps": 30
+  },
+  "privacy": {
+    "hide_full_birth_date": true,
+    "hide_birth_time": true,
+    "hide_location_detail": true,
+    "store_video_frame": false
+  },
+  "events": [
+    "select_palace",
+    "cycle_layer",
+    "cycle_major_period",
+    "reset_view",
+    "enter_panorama",
+    "toggle_mode",
+    "create_share_card"
+  ]
+}

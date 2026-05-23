@@ -1,0 +1,243 @@
+[
+  {
+    "rule_id": "phase3_palace_life_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["life"],
+    "conditions": [{ "type": "palace", "value": "life" }],
+    "weight": 35,
+    "source": {
+      "title": "斗数发微论",
+      "excerpt": "先审命宫，次观三方。",
+      "modern_translation": "命宫用于定位自我结构，三方四正用于校正判断。"
+    },
+    "professional_text": "命宫先看自我定位、行动方式与长期角色感。本盘命宫触发基础主题，适合把星曜组合放回整体结构中理解。",
+    "entertainment_text": "这张盘的命宫像是你的主控台，重点在于你怎么定位自己、安排节奏和拿主意。",
+    "scenario": "可用于观察角色定位、个人节奏、长期目标和对外呈现方式。",
+    "advice": "把判断落到可验证的小目标上，避免只凭单一星曜做绝对判断。",
+    "safety_flags": ["avoid_absolute_prediction"]
+  },
+  {
+    "rule_id": "phase3_palace_career_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["career"],
+    "conditions": [{ "type": "palace", "value": "career" }],
+    "weight": 35,
+    "source": {
+      "title": "斗数骨髓赋",
+      "excerpt": "官禄观其职分。",
+      "modern_translation": "官禄宫用于观察工作责任、职业路径和组织位置。"
+    },
+    "professional_text": "官禄宫以职责、专业路线和组织角色为主轴。触发此主题时，应结合命宫与财帛宫判断行动和资源是否支持职业目标。",
+    "entertainment_text": "官禄宫更像事业仪表盘，提示你在哪类责任和角色里更容易看见节奏。",
+    "scenario": "可用于观察职业定位、职责边界、协作方式和阶段性工作目标。",
+    "advice": "以能力建设和风险复盘为主，不把命盘结果作为跳槽、签约或重大职业决定的唯一依据。",
+    "safety_flags": ["avoid_absolute_prediction", "career_decision_guard"]
+  },
+  {
+    "rule_id": "phase3_palace_wealth_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["wealth"],
+    "conditions": [{ "type": "palace", "value": "wealth" }],
+    "weight": 35,
+    "source": {
+      "title": "十喻歌",
+      "excerpt": "财帛须看源流。",
+      "modern_translation": "财帛宫重在资源来源、使用方式和稳定性，而不是单点财运判断。"
+    },
+    "professional_text": "财帛宫用于观察资源调度、收入结构和风险偏好。本盘触发财帛主题，应同时看官禄与福德的支持度。",
+    "entertainment_text": "财帛宫像资源管理面板，重点不是一句财运好坏，而是钱、精力和机会怎么流动。",
+    "scenario": "可用于观察预算习惯、资源配置、收入稳定度和合作中的利益边界。",
+    "advice": "投资、借贷和大额消费应以现实数据与专业意见为准，命盘只作为自我观察参考。",
+    "safety_flags": ["avoid_absolute_prediction", "finance_sensitive"]
+  },
+  {
+    "rule_id": "phase3_palace_spouse_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["spouse"],
+    "conditions": [{ "type": "palace", "value": "spouse" }],
+    "weight": 35,
+    "source": {
+      "title": "斗数发微论",
+      "excerpt": "夫妻观其对待。",
+      "modern_translation": "夫妻宫用于观察亲密关系中的互动模式和期待。"
+    },
+    "professional_text": "夫妻宫重点在关系互动、亲密期待和合作方式。触发此主题时，应避免把单一星曜解读成关系结论。",
+    "entertainment_text": "夫妻宫像关系互动提示卡，适合看你在亲密关系里怎么沟通和靠近对方。",
+    "scenario": "可用于观察伴侣互动、沟通节奏、关系期待和合作分工。",
+    "advice": "婚恋重大决定需要现实沟通与专业咨询支持，不用命盘替代当事人的选择。",
+    "safety_flags": ["avoid_absolute_prediction", "relationship_decision_guard"]
+  },
+  {
+    "rule_id": "phase3_palace_fortune_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["fortune"],
+    "conditions": [{ "type": "palace", "value": "fortune" }],
+    "weight": 35,
+    "source": {
+      "title": "斗数骨髓赋",
+      "excerpt": "福德察其心性。",
+      "modern_translation": "福德宫用于观察内在满足、恢复力和价值偏好。"
+    },
+    "professional_text": "福德宫关注内在稳定、休息方式和精神满足。此宫触发时，解读应偏向长期心态与恢复力。",
+    "entertainment_text": "福德宫像你的充电方式，提醒你什么样的节奏更能补回能量。",
+    "scenario": "可用于观察休息质量、情绪恢复、长期满足感和价值选择。",
+    "advice": "情绪、健康或心理困扰应寻求专业支持，命盘只提供反思角度。",
+    "safety_flags": ["avoid_absolute_prediction", "wellbeing_sensitive"]
+  },
+  {
+    "rule_id": "phase3_palace_migration_theme",
+    "layer": "palace_theme",
+    "palace_ids": ["migration"],
+    "conditions": [{ "type": "palace", "value": "migration" }],
+    "weight": 35,
+    "source": {
+      "title": "十喻歌",
+      "excerpt": "迁移看外缘。",
+      "modern_translation": "迁移宫用于观察外部环境、人际场域和移动中的适应方式。"
+    },
+    "professional_text": "迁移宫用于观察外部机会、异地适应和对外互动。应与命宫对照，判断内外节奏是否一致。",
+    "entertainment_text": "迁移宫像外部世界雷达，提示你离开熟悉环境时更容易遇到什么节奏。",
+    "scenario": "可用于观察出行、异地发展、外部合作和公开场域表现。",
+    "advice": "搬迁、出国、签约等重大事项仍需以现实条件、法律和财务评估为准。",
+    "safety_flags": ["avoid_absolute_prediction", "major_decision_guard"]
+  },
+  {
+    "rule_id": "phase3_star_ziwei_life",
+    "layer": "star_symbol",
+    "palace_ids": ["life"],
+    "conditions": [{ "type": "main_star", "value": "紫微" }],
+    "weight": 30,
+    "source": {
+      "title": "斗数骨髓赋",
+      "excerpt": "紫微为帝座。",
+      "modern_translation": "紫微常被用来象征统筹、秩序和核心位置。"
+    },
+    "professional_text": "紫微入命时，解读重心可放在统筹、定调和承担核心责任，但仍需看同宫辅曜和三方支持。",
+    "entertainment_text": "紫微在命宫时，画面感像自带总控位，适合练习把复杂事排出优先级。",
+    "scenario": "常见于需要做协调、定规则或承担中心角色的情境。",
+    "advice": "把控制感转化为清晰流程，避免用主观判断替代事实核验。",
+    "safety_flags": ["avoid_absolute_prediction"]
+  },
+  {
+    "rule_id": "phase3_star_wuqu_wealth",
+    "layer": "star_symbol",
+    "palace_ids": ["wealth"],
+    "conditions": [{ "type": "main_star", "value": "武曲" }],
+    "weight": 30,
+    "source": {
+      "title": "斗数发微论",
+      "excerpt": "武曲司财。",
+      "modern_translation": "武曲在财帛主题中常用于象征规则、执行和资源管理。"
+    },
+    "professional_text": "武曲在财帛宫时，可把重点放在制度化管理、预算纪律和资源效率，而非简单判断财务结果。",
+    "entertainment_text": "武曲让财帛宫更像一本账本，适合把花费、收入和计划列清楚。",
+    "scenario": "适用于预算、储蓄、资产盘点和资源分配的讨论。",
+    "advice": "所有投资与借贷仍需基于真实风险评估，不用命盘替代财务建议。",
+    "safety_flags": ["avoid_absolute_prediction", "finance_sensitive"]
+  },
+  {
+    "rule_id": "phase3_star_lianzhen_career",
+    "layer": "star_symbol",
+    "palace_ids": ["career"],
+    "conditions": [{ "type": "main_star", "value": "廉贞" }],
+    "weight": 28,
+    "source": {
+      "title": "斗数骨髓赋",
+      "excerpt": "廉贞主法度。",
+      "modern_translation": "廉贞可象征规范、边界、审美和制度压力。"
+    },
+    "professional_text": "廉贞在官禄宫时，可观察制度边界、专业标准和审查压力对职业节奏的影响。",
+    "entertainment_text": "廉贞让事业议题多了一层规则感，适合把边界、标准和流程先讲清楚。",
+    "scenario": "常见于需要合规、审查、流程管理或标准制定的职业情境。",
+    "advice": "涉及合同、劳动权益或法律边界时，应咨询专业人士。",
+    "safety_flags": ["avoid_absolute_prediction", "legal_sensitive"]
+  },
+  {
+    "rule_id": "phase3_star_qisha_spouse",
+    "layer": "star_symbol",
+    "palace_ids": ["spouse"],
+    "conditions": [{ "type": "main_star", "value": "七杀" }],
+    "weight": 28,
+    "source": {
+      "title": "十喻歌",
+      "excerpt": "七杀重决断。",
+      "modern_translation": "七杀常用于象征决断、边界和变化压力。"
+    },
+    "professional_text": "七杀在夫妻宫时，关系议题可聚焦边界、节奏差异和共同决策方式，不宜直接推断关系结果。",
+    "entertainment_text": "七杀让关系卡片更有行动感，适合把边界和节奏提前说清楚。",
+    "scenario": "可用于讨论亲密关系中的主动性、冲突修复和决策分工。",
+    "advice": "关系重大选择应建立在真实沟通、尊重和必要的咨询支持上。",
+    "safety_flags": ["avoid_absolute_prediction", "relationship_decision_guard"]
+  },
+  {
+    "rule_id": "phase3_transform_hua_quan",
+    "layer": "strength_modifier",
+    "palace_ids": ["wealth", "life", "career", "spouse", "fortune", "migration"],
+    "conditions": [{ "type": "transform", "value": "hua_quan" }],
+    "weight": 24,
+    "source": {
+      "title": "斗数发微论",
+      "excerpt": "权主推动。",
+      "modern_translation": "化权常用于表达推动力、主导性和执行压力。"
+    },
+    "professional_text": "化权落入当前宫位时，主题会带有推动、主导和责任压力，需要看是否有足够资源承接。",
+    "entertainment_text": "化权像给这个宫位按下加速键，行动感变强，也更需要稳住节奏。",
+    "scenario": "适用于主动推进、承担责任、争取主导权的场景。",
+    "advice": "先确认资源和边界，再推进高影响行动。",
+    "safety_flags": ["avoid_absolute_prediction"]
+  },
+  {
+    "rule_id": "phase3_transform_hua_lu",
+    "layer": "strength_modifier",
+    "palace_ids": ["wealth", "life", "career", "spouse", "fortune", "migration"],
+    "conditions": [{ "type": "transform", "value": "hua_lu" }],
+    "weight": 22,
+    "source": {
+      "title": "斗数骨髓赋",
+      "excerpt": "禄为资养。",
+      "modern_translation": "化禄可理解为资源、顺势和补给。"
+    },
+    "professional_text": "化禄相关主题可观察资源流入、缓冲和顺势条件，但不能等同于确定收益。",
+    "entertainment_text": "化禄像给相关议题加了一点补给感，适合找资源和支持点。",
+    "scenario": "适用于资源整合、支持系统和合作条件讨论。",
+    "advice": "把机会转化为清单与行动，不把象义当成收益承诺。",
+    "safety_flags": ["avoid_absolute_prediction", "finance_sensitive"]
+  },
+  {
+    "rule_id": "phase3_relation_wealth_life_career_triad",
+    "layer": "relation",
+    "palace_ids": ["wealth"],
+    "conditions": [
+      { "type": "palace", "value": "wealth" },
+      { "type": "relation", "relation": "triad", "target_palace_ids": ["life", "career"] }
+    ],
+    "weight": 26,
+    "source": {
+      "title": "斗数发微论",
+      "excerpt": "三方会照，互为参看。",
+      "modern_translation": "三方宫位共同修正主题，不能只取单宫断语。"
+    },
+    "professional_text": "财帛与命宫、官禄形成三方参看时，应把资源主题放进个人定位和职业路径中综合判断。",
+    "entertainment_text": "财帛这张卡会被命宫和事业宫一起影响，像收入、目标和工作节奏互相拉动。",
+    "scenario": "适用于收入来源、工作回报和个人目标之间的协调。",
+    "advice": "以多项现实指标交叉确认，避免单宫单星断事。",
+    "safety_flags": ["avoid_absolute_prediction", "finance_sensitive"]
+  },
+  {
+    "rule_id": "phase3_relation_life_migration_opposite",
+    "layer": "relation",
+    "palace_ids": ["life", "migration"],
+    "conditions": [{ "type": "relation", "relation": "opposite", "target_palace_ids": ["life", "migration"] }],
+    "weight": 20,
+    "source": {
+      "title": "十喻歌",
+      "excerpt": "本对相参。",
+      "modern_translation": "本宫与对宫互相映照，适合比较内在节奏与外部环境。"
+    },
+    "professional_text": "命迁对照时，解读要比较自我节奏与外部场域，不宜只看其中一端。",
+    "entertainment_text": "命宫和迁移宫像内外两面镜子，一个看自己，一个看外部世界。",
+    "scenario": "适用于自我定位、外部合作、出行和公开表达之间的对照。",
+    "advice": "先分清内部期待和外部条件，再做行动安排。",
+    "safety_flags": ["avoid_absolute_prediction"]
+  }
+]

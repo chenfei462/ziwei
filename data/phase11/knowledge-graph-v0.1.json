@@ -1,0 +1,22 @@
+{
+  "version": "v0.1",
+  "coverage": [
+    "fourteen_main_stars",
+    "twelve_palaces",
+    "four_transforms",
+    "mvp_six_palace_rules",
+    "common_patterns",
+    "classical_source_metadata"
+  ],
+  "privacy": {
+    "stores_full_birth_date": false,
+    "stores_birth_time": false,
+    "stores_location_detail": false,
+    "stores_video_frame": false
+  },
+  "content_policy": {
+    "hard_prediction_terms_allowed": false,
+    "source_excerpts": "short excerpt only",
+    "commercial_export_requires_review": true
+  }
+}

@@ -1,0 +1,2 @@
+feedback_id,session_id,received_at,device_type,browser,viewport_width,viewport_height,camera_permission,completed_tasks,overall,interpretation_trust,gesture_usability,share_willingness,issue_category,comment,screenshot_note,privacy_status
+seed_pending,session_pending,2026-04-30T00:00:00.000Z,desktop,chromium,1440,980,not_requested,create_chart|select_palace|switch_mode|open_trace|gesture_or_fallback|submit_feedback,5,4,4,5,minor,seed_needs_real_closed_test_feedback,no_image_uploaded,no_full_birth_or_video_frame

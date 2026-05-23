@@ -1,0 +1,21 @@
+{
+  "version": "v0.1",
+  "production_payment_provider": "stripe_checkout",
+  "required_environment": [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "PHASE10_PRODUCTION_PAYMENT_ENABLED",
+    "PHASE10_PAYMENT_ROLLOUT_PERCENT",
+    "PHASE10_PAYMENT_ROLLBACK",
+    "PHASE10_ADMIN_TOKEN"
+  ],
+  "default_rollout_percent": 0,
+  "max_production_amount_cents": 9900,
+  "reserved_channels": ["wechat_pay_reserved", "alipay_reserved"],
+  "privacy": {
+    "stores_full_birth_date": false,
+    "stores_birth_time": false,
+    "stores_location_detail": false,
+    "stores_video_frame": false
+  }
+}

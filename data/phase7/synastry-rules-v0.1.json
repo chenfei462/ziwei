@@ -1,0 +1,57 @@
+{
+  "version": "0.1",
+  "phase": "phase7_synastry",
+  "scope": "relationship_and_team_observation",
+  "privacy_defaults": {
+    "hide_full_birth_date": true,
+    "hide_birth_time": true,
+    "hide_location_detail": true,
+    "stores_video_frame": false,
+    "requires_participant_consent": true
+  },
+  "rules": [
+    {
+      "rule_id": "phase7_synastry_life_spouse_bridge",
+      "layer": "synastry",
+      "inputs": ["primary.life", "partner.spouse", "main_stars", "transforms"],
+      "weight": 30,
+      "professional_use": "观察自我表达与关系互动的沟通桥，不用于判断关系成败。",
+      "entertainment_use": "生成轻量合盘沟通卡。",
+      "source": {
+        "title": "斗数骨髓赋",
+        "excerpt": "吉凶不可一例而断",
+        "modern_translation": "合盘必须多因素合参，避免单点断事。"
+      },
+      "safety_flags": ["avoid_absolute_prediction", "relationship_decision_guard", "no_marriage_outcome"]
+    },
+    {
+      "rule_id": "phase7_synastry_career_wealth_cooperation",
+      "layer": "synastry",
+      "inputs": ["primary.career", "partner.wealth", "support_stars", "transforms"],
+      "weight": 24,
+      "professional_use": "观察职责、资源和回报边界。",
+      "entertainment_use": "生成合作节奏与团队配合提示。",
+      "source": {
+        "title": "斗数发微论",
+        "excerpt": "对照兮详凶详吉",
+        "modern_translation": "对照宫与相关宫位都要作为独立依据。"
+      },
+      "safety_flags": ["avoid_absolute_prediction", "financial_decision_guard"]
+    },
+    {
+      "rule_id": "phase7_synastry_fortune_migration_boundary",
+      "layer": "synastry",
+      "inputs": ["primary.fortune", "partner.migration", "relation_refs"],
+      "weight": 20,
+      "professional_use": "观察情绪恢复、外部协作和边界感。",
+      "entertainment_use": "生成共同探索和降噪建议。",
+      "source": {
+        "title": "十喻歌",
+        "excerpt": "本方对方合方邻方",
+        "modern_translation": "关系解读应同时看自身、对方、合方和近身环境。"
+      },
+      "safety_flags": ["avoid_fear_language", "relationship_decision_guard"]
+    }
+  ],
+  "consultant_gate": "v0.1 is an engineering rule table. Consultant-reviewed golden assertions are required before professional acceptance."
+}

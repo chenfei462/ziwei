@@ -1,0 +1,20 @@
+{
+  "version": "mini_program_v0.1",
+  "review_status": "materials_ready",
+  "rollout_percent": 10,
+  "fallback_to_h5": true,
+  "allowed_channels": ["mini_program", "wechat_group"],
+  "rollback_triggers": [
+    "review_rejected",
+    "openid_binding_error_rate_high",
+    "share_payload_privacy_violation",
+    "subscription_complaint_spike"
+  ],
+  "privacy_defaults": {
+    "hides_full_birth_date": true,
+    "hides_birth_time": true,
+    "hides_location_detail": true,
+    "stores_video_frame": false,
+    "stores_full_birth_profile": false
+  }
+}

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+.next/
+dist/
+test-results/
+.playwright-cli/
+.superpowers/
+output/
+*.log

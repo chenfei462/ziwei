@@ -1,0 +1,23 @@
+{
+  "version": "v0.1",
+  "phase": "phase15",
+  "review_status": "materials_ready",
+  "category": "traditional_culture_tool",
+  "required_materials": [
+    "service_description",
+    "privacy_policy",
+    "camera_permission_note",
+    "birth_profile_usage_note",
+    "cultural_entertainment_disclaimer",
+    "demo_account",
+    "review_screenshots"
+  ],
+  "fallback_copy": "Traditional culture star cards and self-observation tool.",
+  "blocked_claims": [
+    "absolute_prediction",
+    "medical_advice",
+    "legal_advice",
+    "investment_commitment",
+    "relationship_decision_commitment"
+  ]
+}

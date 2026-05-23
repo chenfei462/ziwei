@@ -1,0 +1,59 @@
+{
+  "version": "0.1",
+  "phase": "phase7_timeline",
+  "scope": "annual_and_monthly_theme_observation",
+  "supported_scopes": ["annual", "monthly"],
+  "unsupported_scopes": ["daily", "event_prediction"],
+  "mvp_palaces": ["life", "career", "wealth", "spouse", "fortune", "migration"],
+  "privacy_defaults": {
+    "hide_full_birth_date": true,
+    "hide_birth_time": true,
+    "hide_location_detail": true,
+    "stores_video_frame": false
+  },
+  "rules": [
+    {
+      "rule_id": "phase7_timeline_major_period_overlay",
+      "layer": "annual_monthly",
+      "inputs": ["chart.major_periods", "palace_id", "year"],
+      "weight": 26,
+      "professional_use": "把年度主题和本命宫位、大限宫位互参。",
+      "entertainment_use": "生成年度主题卡和轻量行动提示。",
+      "source": {
+        "title": "斗数发微论",
+        "excerpt": "行限参看",
+        "modern_translation": "阶段主题要与本命结构互参，不能孤立判断。"
+      },
+      "safety_flags": ["avoid_absolute_prediction", "major_decision_guard", "annual_theme_only"]
+    },
+    {
+      "rule_id": "phase7_timeline_annual_observation",
+      "layer": "annual_monthly",
+      "inputs": ["year", "palace_id", "mode"],
+      "weight": 16,
+      "professional_use": "输出年度主题、现实场景和建议。",
+      "entertainment_use": "输出年度主题分享卡。",
+      "source": {
+        "title": "斗数骨髓赋",
+        "excerpt": "命好身好限好",
+        "modern_translation": "本命、身宫和限运一致时增强观察置信度。"
+      },
+      "safety_flags": ["avoid_absolute_prediction", "annual_theme_only"]
+    },
+    {
+      "rule_id": "phase7_timeline_monthly_observation",
+      "layer": "annual_monthly",
+      "inputs": ["year", "month", "palace_id", "mode"],
+      "weight": 18,
+      "professional_use": "输出月度观察重点和短周期复盘建议。",
+      "entertainment_use": "输出月度轻量卡片。",
+      "source": {
+        "title": "斗数发微论",
+        "excerpt": "对照合照",
+        "modern_translation": "短周期提示只能作为观察，不作为具体事件预测。"
+      },
+      "safety_flags": ["avoid_absolute_prediction", "monthly_observation_only"]
+    }
+  ],
+  "consultant_gate": "v0.1 only supports annual/monthly themes for six MVP palaces. No daily prediction or event commitment is allowed."
+}

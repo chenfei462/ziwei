@@ -1,0 +1,30 @@
+{
+  "version": "v0.1",
+  "positioning": "Daily Stargarden rules are lightweight cultural-entertainment observations, not professional daily prediction.",
+  "rules": [
+    {
+      "rule_id": "daily_life_observation",
+      "palace_id": "life",
+      "quest_categories": ["reflection", "organization"],
+      "safety_flags": ["avoid_absolute_prediction", "daily_observation_only", "major_decision_guard"]
+    },
+    {
+      "rule_id": "daily_career_observation",
+      "palace_id": "career",
+      "quest_categories": ["organization", "communication"],
+      "safety_flags": ["avoid_absolute_prediction", "daily_observation_only", "major_decision_guard"]
+    },
+    {
+      "rule_id": "daily_wealth_observation",
+      "palace_id": "wealth",
+      "quest_categories": ["organization", "reflection"],
+      "safety_flags": ["avoid_absolute_prediction", "daily_observation_only", "financial_decision_guard"]
+    },
+    {
+      "rule_id": "daily_spouse_observation",
+      "palace_id": "spouse",
+      "quest_categories": ["communication", "reflection"],
+      "safety_flags": ["avoid_absolute_prediction", "daily_observation_only", "relationship_decision_guard"]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "version": "v0.1",
+  "asset_types": [
+    {
+      "asset_type": "live_outline",
+      "purpose": "A creator-facing outline for livestream or consultation explanation.",
+      "required_blocks": ["opening", "basis", "trace", "safety_note", "closing"]
+    },
+    {
+      "asset_type": "short_video_script",
+      "purpose": "A short-form content script with a hook, topic card, and disclaimer.",
+      "required_blocks": ["hook", "topic", "source_hint", "privacy_note", "call_to_feedback"]
+    },
+    {
+      "asset_type": "palace_card",
+      "purpose": "A shareable six-palace explanation card.",
+      "required_blocks": ["palace_theme", "star_keywords", "soft_summary", "safety_note"]
+    },
+    {
+      "asset_type": "synastry_card",
+      "purpose": "A relationship communication card that avoids marriage outcome claims.",
+      "required_blocks": ["communication_style", "cooperation_rhythm", "boundary_reminder", "privacy_note"]
+    },
+    {
+      "asset_type": "timeline_card",
+      "purpose": "An annual or monthly theme card without concrete event prediction.",
+      "required_blocks": ["year_or_month", "focus_theme", "observation_prompt", "safety_note"]
+    }
+  ],
+  "content_review": {
+    "hard_prediction_terms": ["一定", "必然", "死亡", "绝症", "破产", "灾祸", "离婚", "分手复合"],
+    "privacy_patterns": ["birth_date", "birth_time", "location_detail", "image_payload"],
+    "sensitive_topics": ["medical", "legal", "financial", "relationship_major_decision"],
+    "export_blocking_statuses": ["blocked"]
+  }
+}

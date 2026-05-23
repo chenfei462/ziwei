@@ -1,0 +1,31 @@
+sample_id,scenario_type,chart_seed,year,month,palace_id,expected_scope,validation_status,consultant_note
+TIM-001,annual,phase7_chart_001,2027,,life,annual,seed_needs_consultant_review,年度命宫主题待顾问确认
+TIM-002,annual,phase7_chart_002,2027,,career,annual,seed_needs_consultant_review,年度官禄主题待顾问确认
+TIM-003,annual,phase7_chart_003,2027,,wealth,annual,seed_needs_consultant_review,年度财帛主题需投资安全降级
+TIM-004,annual,phase7_chart_004,2027,,spouse,annual,seed_needs_consultant_review,年度夫妻主题需关系安全降级
+TIM-005,annual,phase7_chart_005,2027,,fortune,annual,seed_needs_consultant_review,年度福德主题待顾问确认
+TIM-006,annual,phase7_chart_006,2027,,migration,annual,seed_needs_consultant_review,年度迁移主题待顾问确认
+TIM-007,monthly,phase7_chart_007,2027,1,life,monthly,seed_needs_consultant_review,1 月命宫观察
+TIM-008,monthly,phase7_chart_008,2027,2,career,monthly,seed_needs_consultant_review,2 月官禄观察
+TIM-009,monthly,phase7_chart_009,2027,3,wealth,monthly,seed_needs_consultant_review,3 月财帛观察
+TIM-010,monthly,phase7_chart_010,2027,4,spouse,monthly,seed_needs_consultant_review,4 月夫妻观察
+TIM-011,monthly,phase7_chart_011,2027,5,fortune,monthly,seed_needs_consultant_review,5 月福德观察
+TIM-012,monthly,phase7_chart_012,2027,6,migration,monthly,seed_needs_consultant_review,6 月迁移观察
+TIM-013,monthly,phase7_chart_013,2027,7,life,monthly,seed_needs_consultant_review,7 月命宫观察
+TIM-014,monthly,phase7_chart_014,2027,8,career,monthly,seed_needs_consultant_review,8 月官禄观察
+TIM-015,monthly,phase7_chart_015,2027,9,wealth,monthly,seed_needs_consultant_review,9 月财帛观察
+TIM-016,monthly,phase7_chart_016,2027,10,spouse,monthly,seed_needs_consultant_review,10 月夫妻观察
+TIM-017,monthly,phase7_chart_017,2027,11,fortune,monthly,seed_needs_consultant_review,11 月福德观察
+TIM-018,monthly,phase7_chart_018,2027,12,migration,monthly,seed_needs_consultant_review,12 月迁移观察
+TIM-019,boundary_year,phase7_chart_019,1900,,life,annual,seed_needs_consultant_review,年份下界
+TIM-020,boundary_year,phase7_chart_020,2100,,career,annual,seed_needs_consultant_review,年份上界
+TIM-021,invalid_month,phase7_chart_021,2027,13,career,error,seed_needs_consultant_review,非法月份必须返回错误
+TIM-022,invalid_palace,phase7_chart_022,2027,,health,error,seed_needs_consultant_review,非六宫深度主题暂不开放
+TIM-023,privacy_review,phase7_chart_023,2027,5,career,monthly,seed_needs_consultant_review,响应不含生日时间地点
+TIM-024,content_review,phase7_chart_024,2027,5,wealth,monthly,seed_needs_consultant_review,财务敏感主题必须安全降级
+TIM-025,relationship_review,phase7_chart_025,2027,5,spouse,monthly,seed_needs_consultant_review,婚恋敏感主题必须安全降级
+TIM-026,professional_mode,phase7_chart_026,2027,5,career,monthly,seed_needs_consultant_review,专业模式显示依据链
+TIM-027,entertainment_mode,phase7_chart_027,2027,5,career,monthly,seed_needs_consultant_review,娱乐模式输出轻量卡
+TIM-028,share_card,phase7_chart_028,2027,5,career,monthly,seed_needs_consultant_review,分享卡隐藏敏感资料
+TIM-029,mobile_flow,phase7_chart_029,2027,5,career,monthly,seed_needs_consultant_review,移动端布局验收
+TIM-030,desktop_flow,phase7_chart_030,2027,5,career,monthly,seed_needs_consultant_review,桌面端布局验收

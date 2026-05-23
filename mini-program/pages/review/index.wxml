@@ -1,0 +1,6 @@
+<view class="review">
+  <view class="heading">Review Scope</view>
+  <view class="item">Traditional culture entertainment and self-observation only.</view>
+  <view class="item">No medical, legal, investment, or major relationship decisions.</view>
+  <view class="item">Birth profile and camera frames are not included in share payloads.</view>
+</view>

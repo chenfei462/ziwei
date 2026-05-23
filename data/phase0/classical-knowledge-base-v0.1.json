@@ -1,0 +1,310 @@
+{
+  "metadata": {
+    "project": "紫微斗数互动项目",
+    "phase": "阶段 0：立项与校准",
+    "version": "v0.1",
+    "created_at": "2026-04-30",
+    "status": "schema_and_seed_entries",
+    "note": "本文件是原典知识库骨架。短引文需在商业上线前继续做版本校勘和版权审查。"
+  },
+  "sources": [
+    {
+      "source_id": "source_zwds_quanshu_index",
+      "title": "紫微斗数全书总目录",
+      "type": "public_domain_classic",
+      "url": "https://zh.wikisource.org/wiki/%E7%B4%AB%E5%BE%AE%E6%96%97%E6%95%B8%E5%85%A8%E6%9B%B8"
+    },
+    {
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "紫微斗数全书卷一",
+      "type": "public_domain_classic",
+      "url": "https://zh.wikisource.org/wiki/%E7%B4%AB%E5%BE%AE%E6%96%97%E6%95%B8%E5%85%A8%E6%9B%B8/%E5%8D%B7%E4%B8%80"
+    },
+    {
+      "source_id": "source_zwds_quanshu_vol2",
+      "title": "紫微斗数全书卷二",
+      "type": "public_domain_classic",
+      "url": "https://zh.wikisource.org/wiki/%E7%B4%AB%E5%BE%AE%E6%96%97%E6%95%B8%E5%85%A8%E6%9B%B8/%E5%8D%B7%E4%BA%8C"
+    },
+    {
+      "source_id": "source_shiyuge",
+      "title": "十喻歌",
+      "type": "classic_reference",
+      "url": "https://www.ncc.com.tw/fate/paleo/gv/gv_06.htm"
+    },
+    {
+      "source_id": "source_project_plan",
+      "title": "紫微斗数互动项目计划书",
+      "type": "internal_plan",
+      "url": "D:/Desktop/紫微斗数互动项目计划书.docx"
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "charting",
+      "name": "排盘法",
+      "purpose": "记录安命身、十二宫、星曜、四化、大限等计算入口。"
+    },
+    {
+      "category_id": "structure",
+      "name": "结构法",
+      "purpose": "记录三方四正、本对合邻、会照、对照等关系结构。"
+    },
+    {
+      "category_id": "stars",
+      "name": "星曜法",
+      "purpose": "记录主星、辅曜、煞曜、庙旺陷和星曜标签。"
+    },
+    {
+      "category_id": "patterns",
+      "name": "格局法",
+      "purpose": "记录组合条件、格局命中、冲突因素和降级规则。"
+    },
+    {
+      "category_id": "periods",
+      "name": "限运法",
+      "purpose": "记录大限、流年等阶段性主题的解释入口。"
+    },
+    {
+      "category_id": "explanation",
+      "name": "解释法",
+      "purpose": "记录文案结构、安全表达、专业/娱乐双模式转译。"
+    }
+  ],
+  "entries": [
+    {
+      "entry_id": "CHARTING-001",
+      "category_id": "charting",
+      "source_id": "source_zwds_quanshu_vol2",
+      "title": "安命身",
+      "quote_short": "安身命例",
+      "modern_interpretation": "命宫和身宫是命盘的基础定位，必须保留出生月、出生时辰和中间计算过程。",
+      "rule_usage": "阶段 1 排盘引擎必须输出 life_palace 和 body_palace，并支持样例盘校验。",
+      "rule_mapping_fields": ["birth_month", "birth_hour", "life_palace", "body_palace"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["no_prediction_by_single_factor"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "CHARTING-002",
+      "category_id": "charting",
+      "source_id": "source_project_plan",
+      "title": "十二宫",
+      "quote_short": "命、兄弟、夫妻、子女、财帛、疾厄、迁移、仆役、官禄、田宅、福德、父母",
+      "modern_interpretation": "十二宫是信息架构和前端星盘渲染的固定骨架。",
+      "rule_usage": "Chart.palaces 必须包含十二个宫位，且每个宫位可追踪地支、宫干、星曜和关系引用。",
+      "rule_mapping_fields": ["palace_name", "branch", "stem", "stars", "relations"],
+      "output_templates": ["chart_display", "professional_basis"],
+      "safety_tags": ["structure_first"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "CHARTING-003",
+      "category_id": "charting",
+      "source_id": "source_project_plan",
+      "title": "四化",
+      "quote_short": "化禄、化权、化科、化忌",
+      "modern_interpretation": "四化作为动态修饰因子，影响主题强度和表达方向。",
+      "rule_usage": "排盘引擎输出 transforms，解读引擎将其转为资源、行动力、名望、牵绊等现代标签。",
+      "rule_mapping_fields": ["source_stem", "transform_type", "star", "palace_id"],
+      "output_templates": ["professional_basis", "entertainment_card"],
+      "safety_tags": ["avoid_absolute_prediction"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STRUCTURE-001",
+      "category_id": "structure",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "先明格局",
+      "quote_short": "先明格局，次看众星",
+      "modern_interpretation": "解读先看整体结构和组合关系，再解释单颗星曜。",
+      "rule_usage": "解释排序必须是结构优先，禁止单星直接断事。",
+      "rule_mapping_fields": ["pattern_hits", "relation_scores", "star_factors"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["no_single_star_judgement"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STRUCTURE-002",
+      "category_id": "structure",
+      "source_id": "source_project_plan",
+      "title": "本对合邻",
+      "quote_short": "本宫、对宫、三合、邻宫",
+      "modern_interpretation": "点选一个宫位时，需要同步观察本宫、对宫、三合宫和邻宫。",
+      "rule_usage": "前端高亮和解读权重使用本宫、对宫、三合、邻宫四类关系。",
+      "rule_mapping_fields": ["selected_palace", "opposite", "triad", "neighbors", "relation_weight"],
+      "output_templates": ["chart_display", "professional_basis"],
+      "safety_tags": ["show_context"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STRUCTURE-003",
+      "category_id": "structure",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "对照合照",
+      "quote_short": "对照兮详凶详吉，合照兮观贱观荣",
+      "modern_interpretation": "对宫和三方不是附属信息，而是独立解释来源。",
+      "rule_usage": "解读接口 include_trace=true 时必须返回触发的对宫和三方依据。",
+      "rule_mapping_fields": ["opposite_palace", "triad_palaces", "supporting_factors", "challenge_factors"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["balanced_reading"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STARS-001",
+      "category_id": "stars",
+      "source_id": "source_project_plan",
+      "title": "十四主星",
+      "quote_short": "紫微、天机、太阳、武曲、天同、廉贞、天府、太阴、贪狼、巨门、天相、天梁、七杀、破军",
+      "modern_interpretation": "十四主星是 MVP 星曜显示和六宫解读的主要标签来源。",
+      "rule_usage": "阶段 1 必须输出十四主星落宫，阶段 2 可扩展全量星曜。",
+      "rule_mapping_fields": ["star_name", "star_category", "palace_id", "tags"],
+      "output_templates": ["chart_display", "entertainment_card"],
+      "safety_tags": ["tag_not_fate"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STARS-002",
+      "category_id": "stars",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "入垣失地",
+      "quote_short": "吉星入垣则为吉，凶星失地则为凶",
+      "modern_interpretation": "同一星曜在不同宫位和强弱状态下表达不同，不能使用固定话术。",
+      "rule_usage": "Star.brightness 字段先占位，阶段 1 可输出 null，阶段 3 用于强弱修正。",
+      "rule_mapping_fields": ["star_name", "palace_id", "brightness", "strength_score"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["needs_strength_modifier"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "STARS-003",
+      "category_id": "stars",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "吉凶互参",
+      "quote_short": "吉有凶星，美玉瑕玷",
+      "modern_interpretation": "优势和阻碍需要同时呈现，避免把结果简化成吉凶二分。",
+      "rule_usage": "文案统一输出优势、挑战、建议三段式。",
+      "rule_mapping_fields": ["positive_factors", "challenge_factors", "advice"],
+      "output_templates": ["professional_basis", "entertainment_card"],
+      "safety_tags": ["avoid_binary_good_bad"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PATTERNS-001",
+      "category_id": "patterns",
+      "source_id": "source_project_plan",
+      "title": "科权禄拱",
+      "quote_short": "科权禄拱",
+      "modern_interpretation": "多项积极结构同时出现时，可以提升结构置信度，但仍不输出绝对结论。",
+      "rule_usage": "阶段 3 格局扫描使用，阶段 1 仅保留字段和知识库条目。",
+      "rule_mapping_fields": ["transform_set", "triad_palaces", "confidence"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["avoid_absolute_prediction"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PATTERNS-002",
+      "category_id": "patterns",
+      "source_id": "source_project_plan",
+      "title": "府相朝垣",
+      "quote_short": "府相朝垣",
+      "modern_interpretation": "格局需要满足组合条件和关系条件，不能只凭单个名称触发。",
+      "rule_usage": "规则表必须保存 condition_json、weight 和冲突因素。",
+      "rule_mapping_fields": ["condition_json", "required_stars", "required_relations", "conflicts"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["requires_trace"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PATTERNS-003",
+      "category_id": "patterns",
+      "source_id": "source_project_plan",
+      "title": "机月同梁",
+      "quote_short": "机月同梁",
+      "modern_interpretation": "经典格局在产品中只作为结构标签，必须配合现代语义解释。",
+      "rule_usage": "命中格局时输出格局标签、触发条件、现代转译和置信等级。",
+      "rule_mapping_fields": ["pattern_id", "matched_conditions", "modern_interpretation", "confidence"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["needs_modern_translation"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PERIODS-001",
+      "category_id": "periods",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "本命身限互参",
+      "quote_short": "命好身好限好",
+      "modern_interpretation": "本命、身宫和限运同向时提升结构置信度，不一致时提示阶段性差异。",
+      "rule_usage": "大限解读必须和本命结构互参，不能把限运直接解释成绝对事件。",
+      "rule_mapping_fields": ["natal_score", "body_palace_score", "period_score", "alignment"],
+      "output_templates": ["professional_basis"],
+      "safety_tags": ["period_not_event_prediction"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PERIODS-002",
+      "category_id": "periods",
+      "source_id": "source_zwds_quanshu_vol1",
+      "title": "弱限不绝对",
+      "quote_short": "行限逢乎弱地未必为灾",
+      "modern_interpretation": "阶段性挑战不等于重大负面事件，必须转译为观察主题和行动建议。",
+      "rule_usage": "涉及弱限或煞曜时，文案必须降级为提醒和建议。",
+      "rule_mapping_fields": ["period_palace", "challenge_factors", "supporting_factors", "advice"],
+      "output_templates": ["professional_basis", "entertainment_card"],
+      "safety_tags": ["avoid_fear_language"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "PERIODS-003",
+      "category_id": "periods",
+      "source_id": "source_project_plan",
+      "title": "大限 MVP",
+      "quote_short": "大限、小限、流年",
+      "modern_interpretation": "MVP 只实现大限，流年作为后续扩展，流月和流日暂缓。",
+      "rule_usage": "阶段 1 MajorPeriod 结构只输出大限区间与宫位。",
+      "rule_mapping_fields": ["age_start", "age_end", "palace_id", "direction"],
+      "output_templates": ["chart_display"],
+      "safety_tags": ["scope_control"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "EXPLANATION-001",
+      "category_id": "explanation",
+      "source_id": "source_project_plan",
+      "title": "四段式文案",
+      "quote_short": "依据、解释、现实场景、建议",
+      "modern_interpretation": "每条解读必须让用户看到为什么这么说，以及如何把它转成现实中的观察。",
+      "rule_usage": "Interpretation response 固定包含 basis、interpretation、scenario、advice。",
+      "rule_mapping_fields": ["basis", "interpretation", "scenario", "advice", "confidence"],
+      "output_templates": ["professional_basis", "entertainment_card"],
+      "safety_tags": ["transparent_reasoning"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "EXPLANATION-002",
+      "category_id": "explanation",
+      "source_id": "source_shiyuge",
+      "title": "十喻歌转译",
+      "quote_short": "由内自强、迎面春风、左右逢源、四面楚歌",
+      "modern_interpretation": "用具象比喻表达本方、对方、合方、邻方关系，但不能制造恐吓感。",
+      "rule_usage": "娱乐模式可用十喻比喻生成卡片标题，专业模式保留关系说明。",
+      "rule_mapping_fields": ["relation_type", "relation_quality", "metaphor_label", "safe_copy"],
+      "output_templates": ["entertainment_card"],
+      "safety_tags": ["softened_language"],
+      "status": "seed"
+    },
+    {
+      "entry_id": "EXPLANATION-003",
+      "category_id": "explanation",
+      "source_id": "source_project_plan",
+      "title": "非绝对化表达",
+      "quote_short": "倾向、主题、需要留意、适合通过某行为改善",
+      "modern_interpretation": "解读是文化体验和自我观察，不替代专业决策。",
+      "rule_usage": "文案生成层必须替换硬断词，并为敏感主题添加 safety_flags。",
+      "rule_mapping_fields": ["banned_terms", "safe_rewrite", "safety_flags", "disclaimer"],
+      "output_templates": ["professional_basis", "entertainment_card"],
+      "safety_tags": ["sensitive_topic_guard", "avoid_absolute_prediction"],
+      "status": "seed"
+    }
+  ]
+}

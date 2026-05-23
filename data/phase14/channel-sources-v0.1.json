@@ -1,0 +1,54 @@
+{
+  "version": "v0.1",
+  "phase": "phase14",
+  "sources": [
+    {
+      "channel": "wechat_group",
+      "label": "Wechat group",
+      "use_case": "Private group sharing and challenge invitation",
+      "allowed_payload": ["campaign", "share_id", "visitor_id"],
+      "privacy_note": "Do not include full birth date, birth time, location detail, or camera frames."
+    },
+    {
+      "channel": "mini_program",
+      "label": "Mini program WebView",
+      "use_case": "Wechat mini program H5 container entry",
+      "allowed_payload": ["campaign", "share_id", "visitor_id", "openid_placeholder"],
+      "privacy_note": "Openid remains a placeholder until platform review and consent are complete."
+    },
+    {
+      "channel": "qr_event",
+      "label": "Offline QR event",
+      "use_case": "Offline poster, booth, or creator QR code",
+      "allowed_payload": ["campaign", "share_id", "visitor_id"],
+      "privacy_note": "QR payload must use a short landing URL and no birth profile fields."
+    },
+    {
+      "channel": "short_video",
+      "label": "Short video platform",
+      "use_case": "Creator video caption, bio link, or comment link",
+      "allowed_payload": ["campaign", "share_id", "visitor_id"],
+      "privacy_note": "Copy must remain traditional culture entertainment and self-observation oriented."
+    },
+    {
+      "channel": "creator_homepage",
+      "label": "Creator homepage",
+      "use_case": "Creator profile card and resource page",
+      "allowed_payload": ["campaign", "share_id", "visitor_id"],
+      "privacy_note": "Creator blocks may reference card themes but not sensitive birth data."
+    },
+    {
+      "channel": "organic",
+      "label": "Organic direct traffic",
+      "use_case": "Direct browser visit, search, or untagged referral",
+      "allowed_payload": ["visitor_id"],
+      "privacy_note": "Default channel when no explicit attribution is present."
+    }
+  ],
+  "content_safety": [
+    "avoid_absolute_prediction",
+    "daily_observation_only",
+    "major_decision_guard",
+    "privacy_redaction_required"
+  ]
+}
