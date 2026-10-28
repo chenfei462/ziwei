@@ -173,6 +173,9 @@ describe("phase 11 rule knowledge panel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open node star_zi_wei" }));
     await waitFor(() => expect(screen.getByText("appears_in_rule")).toBeInTheDocument());
+    expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[0]).toBe("/api/ops/chart/compare-rules");
+    expect(vi.mocked(globalThis.fetch).mock.calls[1]?.[0]).toBe("/api/ops/knowledge/search?q=Zi%20Wei%202000-08-16%2003%3A30%20Shanghai&limit=8");
+    expect(vi.mocked(globalThis.fetch).mock.calls[2]?.[0]).toBe("/api/ops/knowledge/node/star_zi_wei");
     expect(screen.queryByText("2000-08-16")).not.toBeInTheDocument();
     expect(screen.queryByText("03:30")).not.toBeInTheDocument();
     expect(screen.queryByText("Shanghai")).not.toBeInTheDocument();

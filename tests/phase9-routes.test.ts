@@ -37,9 +37,11 @@ const consent = {
 
 describe("phase 9 commerce route handlers", () => {
   test("creates order, checkout session, processes webhook, and grants report entitlement", async () => {
+    const memberHeaders = { "x-member-id": "member_route" };
     const chartResponse = await createChartPost(
       new Request("http://local/api/chart/create", {
         method: "POST",
+        headers: memberHeaders,
         body: JSON.stringify(chartBody)
       })
     );
@@ -48,6 +50,7 @@ describe("phase 9 commerce route handlers", () => {
     const draftResponse = await reportDraftPost(
       new Request("http://local/api/report/draft", {
         method: "POST",
+        headers: memberHeaders,
         body: JSON.stringify({
           report_type: "single_chart",
           chart_id: chart.chart_id,
@@ -61,6 +64,7 @@ describe("phase 9 commerce route handlers", () => {
     const orderResponse = await orderCreatePost(
       new Request("http://local/api/order/create", {
         method: "POST",
+        headers: memberHeaders,
         body: JSON.stringify({
           report_id: draft.report_id,
           package_id: "single_report",
@@ -75,6 +79,7 @@ describe("phase 9 commerce route handlers", () => {
     const checkoutResponse = await checkoutPost(
       new Request("http://local/api/checkout/session", {
         method: "POST",
+        headers: memberHeaders,
         body: JSON.stringify({
           order_id: order.order_id,
           provider: "stripe_checkout",
@@ -96,24 +101,24 @@ describe("phase 9 commerce route handlers", () => {
     );
     const webhook = await webhookResponse.json();
 
-    const readResponse = await orderGet(new Request(`http://local/api/order/${order.order_id}`), {
+    const readResponse = await orderGet(new Request(`http://local/api/order/${order.order_id}`, { headers: memberHeaders }), {
       params: Promise.resolve({ id: order.order_id })
     });
     const read = await readResponse.json();
 
-    const listResponse = await orderListGet(new Request("http://local/api/order/list?member_id=member_route"));
+    const listResponse = await orderListGet(new Request("http://local/api/order/list", { headers: memberHeaders }));
     const list = await listResponse.json();
 
-    const entitlementResponse = await entitlementGet(new Request(`http://local/api/entitlement/report/${draft.report_id}?member_id=member_route`), {
+    const entitlementResponse = await entitlementGet(new Request(`http://local/api/entitlement/report/${draft.report_id}`, { headers: memberHeaders }), {
       params: Promise.resolve({ report_id: draft.report_id })
     });
     const entitlement = await entitlementResponse.json();
 
-    const memberResponse = await memberGet(new Request("http://local/api/member/me?member_id=member_route"));
+    const memberResponse = await memberGet(new Request("http://local/api/member/me", { headers: memberHeaders }));
     const member = await memberResponse.json();
 
     expect(orderResponse.status).toBe(201);
-    expect(order.status).toBe("draft");
+    expect(order.status).toBe("created");
     expect(checkoutResponse.status).toBe(201);
     expect(checkout.checkout_url).toContain("/commercial/checkout-sandbox");
     expect(webhookResponse.status).toBe(200);

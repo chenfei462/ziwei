@@ -46,7 +46,7 @@ export function RuleKnowledgePanel({ initialProfiles }: RuleKnowledgePanelProps)
     setIsLoading(true);
     setError(undefined);
     try {
-      const response = await fetch("/api/chart/compare-rules", {
+      const response = await fetch("/api/ops/chart/compare-rules", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -71,7 +71,7 @@ export function RuleKnowledgePanel({ initialProfiles }: RuleKnowledgePanelProps)
     setIsLoading(true);
     setError(undefined);
     try {
-      const response = await fetch(`/api/knowledge/search?q=${encodeURIComponent(query)}&limit=8`);
+      const response = await fetch(`/api/ops/knowledge/search?q=${encodeURIComponent(query)}&limit=8`);
       const payload = (await response.json()) as KnowledgeSearchResponse | { error?: { message?: string } };
       if (!response.ok) {
         throw new Error("error" in payload ? payload.error?.message : "Knowledge search failed.");
@@ -91,7 +91,7 @@ export function RuleKnowledgePanel({ initialProfiles }: RuleKnowledgePanelProps)
     setIsLoading(true);
     setError(undefined);
     try {
-      const response = await fetch(`/api/knowledge/node/${nodeId}`);
+      const response = await fetch(`/api/ops/knowledge/node/${nodeId}`);
       const payload = (await response.json()) as KnowledgeNodeDetail | { error?: { message?: string } };
       if (!response.ok) {
         throw new Error("error" in payload ? payload.error?.message : "Knowledge node lookup failed.");

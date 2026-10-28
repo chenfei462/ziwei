@@ -34,7 +34,7 @@ export function MobileController({ session }: MobileControllerProps) {
     setStatus("sending");
     setError(undefined);
     try {
-      const response = await fetch(`/api/immersive/session/${session.session_id}/event`, {
+      const response = await fetch(`/api/ops/immersive/session/${session.session_id}/event`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

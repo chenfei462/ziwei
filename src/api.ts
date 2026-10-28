@@ -1,5 +1,8 @@
 import { createChart } from "./chartEngine.js";
+import { persistAnonymousMemberLinkSync } from "./accountLinking.js";
+import { recordProductEvent } from "./analytics.js";
 import { ApiError, toErrorEnvelope } from "./errors.js";
+import type { RequestIdentity } from "./auth.js";
 import { interpret } from "./interpret.js";
 import { submitClosedTestFeedback, summarizeClosedTestFeedback } from "./phase4/feedback.js";
 import { createShareCard, saveFavoriteSnapshot, submitReportIntent, summarizeBetaDashboard } from "./phase5/beta.js";
@@ -18,17 +21,36 @@ import {
 } from "./phase9/commerce.js";
 import {
   addOpsOrderNote,
+  createPrivacyDeletionRequest,
+  createOpsSupportTicket,
   createSupportTicket,
+  getOpsPaymentReconciliation,
   getLaunchOperationsDashboard,
+  getOpsOverview,
   getSupportTicket,
+  importOpsProviderStatement,
+  listOpsAdminAuditLogs,
+  listOpsContentReviews,
+  listOpsDataDeletionRequests,
   listOpsEntitlements,
+  listOpsAiGenerations,
   listOpsOrders,
   listOpsPaymentEvents,
+  listOpsReports,
+  listOpsRuleProfiles,
+  listOpsShares,
+  listOpsUsers,
   markOpsManualRefund,
+  previewOpsProviderStatement,
+  promoteOpsRuleProfile,
   recordGrowthEvent,
+  revealOpsSensitiveRecord,
+  reissueOpsEntitlement,
   resolveLaunchPaymentConfig,
+  updateOpsDataDeletionRequest,
   updateSupportTicket
 } from "./phase10/launchOps.js";
+import { getConfiguredOpsToken } from "./phase10/launchOps.js";
 import { compareRuleProfiles, getKnowledgeNode, getRuleProfile, listRuleProfiles, searchKnowledge } from "./phase11/ruleKnowledge.js";
 import { createDailyTheme, getMemberAchievements, getStarAtlasCard, listStarAtlas, recordDailyCheckIn } from "./phase12/daily.js";
 import {
@@ -82,10 +104,20 @@ import type {
   MiniProgramShareCreateRequest,
   MiniProgramSubscribeRequest,
   OpsAuth,
+  OpsDataDeletionUpdateRequest,
+  OpsRuleProfilePromotionRequest,
+  ProviderStatementImportRequest,
+  OpsSensitiveRecordRevealRequest,
   OrderCreateRequest,
   PaymentWebhookRequest,
+  PrivacyDeletionRequestInput,
   ReferralEventRequest,
   ReportDraftRequest,
+  PaymentEvent,
+  ContentReviewSourceType,
+  ContentReviewStatus,
+  DataDeletionStatus,
+  ShareLandingSourceType,
   RuleCompareRequest,
   ShareCreateRequest,
   StageEventRequest,
@@ -100,7 +132,11 @@ export type ApiResponse = {
   body: Record<string, unknown>;
 };
 
-export function handleApiRequest(method: string, path: string, body?: unknown): ApiResponse {
+export type ApiRequestContext = {
+  identity?: RequestIdentity;
+};
+
+export function handleApiRequest(method: string, path: string, body?: unknown, context: ApiRequestContext = {}): ApiResponse {
   try {
     if (method === "POST" && path === "/api/chart/create") {
       const response = createChart(body as ChartCreateRequest);
@@ -121,25 +157,24 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "GET" && path === "/api/rule-profiles") {
-      const response = listRuleProfiles();
-      return { status: 200, body: response as unknown as Record<string, unknown> };
-    }
-
-    const ruleProfileMatch = /^\/api\/rule-profiles\/([^/]+)$/.exec(path);
+    const ruleProfileMatch = /^\/api\/ops\/rule-profiles\/([^/?]+)(?:\?(.*))?$/.exec(path);
     if (method === "GET" && ruleProfileMatch) {
+      assertInternalOpsAuth(readOpsAuth(ruleProfileMatch[2], body));
       const response = getRuleProfile(ruleProfileMatch[1]);
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/chart/compare-rules") {
-      const response = compareRuleProfiles(body as RuleCompareRequest);
+    if (method === "POST" && path === "/api/ops/chart/compare-rules") {
+      const payload = body as RuleCompareRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = compareRuleProfiles(payload);
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    const knowledgeSearchMatch = /^\/api\/knowledge\/search(?:\?(.*))?$/.exec(path);
+    const knowledgeSearchMatch = /^\/api\/ops\/knowledge\/search(?:\?(.*))?$/.exec(path);
     if (method === "GET" && knowledgeSearchMatch) {
       const query = knowledgeSearchMatch[1];
+      assertInternalOpsAuth(readOpsAuth(query, body));
       const response = searchKnowledge({
         query: readQueryValue(query, "q"),
         node_type: readQueryValue(query, "type") as KnowledgeNodeType | undefined,
@@ -150,49 +185,66 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    const knowledgeNodeMatch = /^\/api\/knowledge\/node\/([^/]+)$/.exec(path);
+    const knowledgeNodeMatch = /^\/api\/ops\/knowledge\/node\/([^/?]+)(?:\?(.*))?$/.exec(path);
     if (method === "GET" && knowledgeNodeMatch) {
+      assertInternalOpsAuth(readOpsAuth(knowledgeNodeMatch[2], body));
       const response = getKnowledgeNode(knowledgeNodeMatch[1]);
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/feedback") {
-      const response = submitClosedTestFeedback(body as ClosedTestFeedbackRequest);
+    if (method === "POST" && path === "/api/ops/internal-feedback") {
+      const payload = body as ClosedTestFeedbackRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = submitClosedTestFeedback(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "GET" && path === "/api/feedback") {
+    const internalFeedbackMatch = /^\/api\/ops\/internal-feedback(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && internalFeedbackMatch) {
+      assertInternalOpsAuth(readOpsAuth(internalFeedbackMatch[1], body));
       const response = summarizeClosedTestFeedback();
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/beta/share-card") {
-      const response = createShareCard(body as BetaShareCardRequest);
+    if (method === "POST" && path === "/api/ops/product-signals/share-card") {
+      const payload = body as BetaShareCardRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = createShareCard(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/beta/favorite") {
-      const response = saveFavoriteSnapshot(body as BetaFavoriteRequest);
+    if (method === "POST" && path === "/api/ops/product-signals/favorite") {
+      const payload = body as BetaFavoriteRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = saveFavoriteSnapshot(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/beta/report-intent") {
-      const response = submitReportIntent(body as BetaReportIntentRequest);
+    if (method === "POST" && path === "/api/ops/product-signals/report-intent") {
+      const payload = body as BetaReportIntentRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = submitReportIntent(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "GET" && path === "/api/beta/dashboard") {
+    const productSignalsDashboardMatch = /^\/api\/ops\/product-signals\/dashboard(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && productSignalsDashboardMatch) {
+      assertInternalOpsAuth(readOpsAuth(productSignalsDashboardMatch[1], body));
       const response = summarizeBetaDashboard();
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/synastry/create") {
-      const response = createSynastry(body as SynastryCreateRequest);
+    if (method === "POST" && path === "/api/ops/synastry/create") {
+      const payload = body as SynastryCreateRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = createSynastry(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/timeline/interpret") {
-      const response = interpretTimeline(body as TimelineInterpretRequest);
+    if (method === "POST" && path === "/api/ops/timeline/interpret") {
+      const payload = body as TimelineInterpretRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = interpretTimeline(payload);
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
@@ -241,8 +293,15 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
     }
 
     if (method === "POST" && path === "/api/payment/webhook") {
-      const response = processPaymentWebhook(body as PaymentWebhookRequest);
-      return { status: 200, body: response as unknown as Record<string, unknown> };
+      const event = processPaymentWebhook(body as PaymentWebhookRequest);
+      if (event.payment_event_id && !event.is_duplicate) {
+        recordProductEvent("payment_result", {
+          order_id: event.order_id,
+          result: event.order.status,
+          metadata: { event_type: event.event_type, duplicate: event.is_duplicate, provider: event.provider }
+        });
+      }
+      return { status: 200, body: event as unknown as Record<string, unknown> };
     }
 
     const entitlementMatch = /^\/api\/entitlement\/report\/([^/?]+)(?:\?(.*))?$/.exec(path);
@@ -257,7 +316,9 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "GET" && path === "/api/commercial/dashboard") {
+    const opsCommercialDashboardMatch = /^\/api\/ops\/commercial\/dashboard(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsCommercialDashboardMatch) {
+      assertInternalOpsAuth(readOpsAuth(opsCommercialDashboardMatch[1], body));
       const response = getCommercialDashboard();
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
@@ -308,6 +369,7 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
 
     if (method === "POST" && path === "/api/member/link-anonymous") {
       const response = linkAnonymousMember(body as AnonymousLinkRequest);
+      persistAnonymousMemberLinkSync(response);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
@@ -348,7 +410,9 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "GET" && path === "/api/growth/channel-dashboard") {
+    const opsChannelDashboardMatch = /^\/api\/ops\/growth\/channel-dashboard(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsChannelDashboardMatch) {
+      assertInternalOpsAuth(readOpsAuth(opsChannelDashboardMatch[1], body));
       const response = getChannelDashboard();
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
@@ -391,7 +455,7 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    const launchDashboardMatch = /^\/api\/launch\/dashboard(?:\?(.*))?$/.exec(path);
+    const launchDashboardMatch = /^\/api\/ops\/launch\/dashboard(?:\?(.*))?$/.exec(path);
     if (method === "GET" && launchDashboardMatch) {
       const response = getLaunchOperationsDashboard({ auth: readOpsAuth(launchDashboardMatch[1], body) });
       return { status: 200, body: response as unknown as Record<string, unknown> };
@@ -414,6 +478,22 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
+    const opsReconciliationMatch = /^\/api\/ops\/reconciliation(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsReconciliationMatch) {
+      const response = getOpsPaymentReconciliation({ auth: readOpsAuth(opsReconciliationMatch[1], body) });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    if (method === "POST" && path === "/api/ops/reconciliation/import") {
+      const response = importOpsProviderStatement(body as ProviderStatementImportRequest);
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    if (method === "POST" && path === "/api/ops/reconciliation/preview") {
+      const response = previewOpsProviderStatement(body as ProviderStatementImportRequest);
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
     const opsEntitlementsMatch = /^\/api\/ops\/entitlements(?:\?(.*))?$/.exec(path);
     if (method === "GET" && opsEntitlementsMatch) {
       const response = listOpsEntitlements({
@@ -423,14 +503,149 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
+    const opsOverviewMatch = /^\/api\/ops\/overview(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsOverviewMatch) {
+      const response = getOpsOverview({ auth: readOpsAuth(opsOverviewMatch[1], body) });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsAiGenerationsMatch = /^\/api\/ops\/ai-generations(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsAiGenerationsMatch) {
+      const response = listOpsAiGenerations({ auth: readOpsAuth(opsAiGenerationsMatch[1], body) });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsContentReviewsMatch = /^\/api\/ops\/content-reviews(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsContentReviewsMatch) {
+      const query = opsContentReviewsMatch[1];
+      const response = listOpsContentReviews({
+        auth: readOpsAuth(query, body),
+        status: readQueryValue(query, "status") as ContentReviewStatus | undefined,
+        report_id: readQueryValue(query, "report_id"),
+        source_type: readQueryValue(query, "source_type") as ContentReviewSourceType | undefined
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsRuleProfilesMatch = /^\/api\/ops\/rule-profiles(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsRuleProfilesMatch) {
+      const response = listOpsRuleProfiles({ auth: readOpsAuth(opsRuleProfilesMatch[1], body) });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    if (method === "POST" && path === "/api/ops/rule-profiles/default") {
+      const payload = body as Partial<OpsRuleProfilePromotionRequest>;
+      const response = promoteOpsRuleProfile({
+        auth: payload.auth ?? {},
+        profile_id: payload.profile_id ?? "",
+        reason: payload.reason ?? "",
+        second_confirmed: payload.second_confirmed,
+        ticket_id: payload.ticket_id
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsUsersMatch = /^\/api\/ops\/users(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsUsersMatch) {
+      const query = opsUsersMatch[1];
+      const response = listOpsUsers({
+        auth: readOpsAuth(query, body),
+        member_id: readQueryValue(query, "member_id"),
+        visitor_id: readQueryValue(query, "visitor_id")
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsReportsMatch = /^\/api\/ops\/reports(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsReportsMatch) {
+      const query = opsReportsMatch[1];
+      const response = listOpsReports({
+        auth: readOpsAuth(query, body),
+        report_id: readQueryValue(query, "report_id"),
+        chart_id: readQueryValue(query, "chart_id"),
+        review_status: readQueryValue(query, "review_status") as ContentReviewStatus | undefined
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsSharesMatch = /^\/api\/ops\/shares(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsSharesMatch) {
+      const query = opsSharesMatch[1];
+      const response = listOpsShares({
+        auth: readOpsAuth(query, body),
+        share_id: readQueryValue(query, "share_id"),
+        source_id: readQueryValue(query, "source_id"),
+        source_type: readQueryValue(query, "source_type") as ShareLandingSourceType | undefined
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsAuditLogsMatch = /^\/api\/ops\/audit-logs(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsAuditLogsMatch) {
+      const response = listOpsAdminAuditLogs({ auth: readOpsAuth(opsAuditLogsMatch[1], body) });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    if (method === "POST" && path === "/api/ops/sensitive-record") {
+      const payload = body as Partial<OpsSensitiveRecordRevealRequest>;
+      const response = revealOpsSensitiveRecord({
+        auth: payload.auth ?? {},
+        record_type: payload.record_type ?? "chart",
+        record_id: payload.record_id ?? "",
+        reason: payload.reason ?? "",
+        second_confirmed: payload.second_confirmed,
+        ticket_id: payload.ticket_id
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsDeletionRequestsMatch = /^\/api\/ops\/deletion-requests(?:\?(.*))?$/.exec(path);
+    if (method === "GET" && opsDeletionRequestsMatch) {
+      const query = opsDeletionRequestsMatch[1];
+      const response = listOpsDataDeletionRequests({
+        auth: readOpsAuth(query, body),
+        status: readQueryValue(query, "status") as DataDeletionStatus | undefined,
+        member_id: readQueryValue(query, "member_id"),
+        visitor_id: readQueryValue(query, "visitor_id")
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsDeletionRequestMatch = /^\/api\/ops\/deletion-request\/([^/]+)$/.exec(path);
+    if (method === "PATCH" && opsDeletionRequestMatch) {
+      const payload = body as Partial<OpsDataDeletionUpdateRequest>;
+      const response = updateOpsDataDeletionRequest({
+        auth: payload.auth ?? {},
+        deletion_request_id: opsDeletionRequestMatch[1],
+        status: payload.status ?? "verifying",
+        note: payload.note ?? "",
+        second_confirmed: payload.second_confirmed
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
     const opsRefundMatch = /^\/api\/ops\/order\/([^/]+)\/refund$/.exec(path);
     if (method === "POST" && opsRefundMatch) {
-      const payload = body as Partial<{ auth: OpsAuth; reason: string; ticket_id: string }>;
+      const payload = body as Partial<{ auth: OpsAuth; reason: string; ticket_id: string; amount_cents: number }>;
       const response = markOpsManualRefund({
         auth: payload.auth ?? {},
         order_id: opsRefundMatch[1],
         reason: payload.reason ?? "",
-        ticket_id: payload.ticket_id
+        ticket_id: payload.ticket_id,
+        amount_cents: payload.amount_cents
+      });
+      return { status: 200, body: response as unknown as Record<string, unknown> };
+    }
+
+    const opsReissueEntitlementMatch = /^\/api\/ops\/order\/([^/]+)\/entitlement\/reissue$/.exec(path);
+    if (method === "POST" && opsReissueEntitlementMatch) {
+      const payload = body as Partial<{ auth: OpsAuth; reason: string; ticket_id: string; export_preview_credits: number }>;
+      const response = reissueOpsEntitlement({
+        auth: payload.auth ?? {},
+        order_id: opsReissueEntitlementMatch[1],
+        reason: payload.reason ?? "",
+        ticket_id: payload.ticket_id,
+        export_preview_credits: payload.export_preview_credits
       });
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
@@ -447,12 +662,32 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/support/ticket") {
-      const response = createSupportTicket(body as SupportTicketRequest);
+    const opsSupportTicketMatch = /^\/api\/ops\/order\/([^/]+)\/support-ticket$/.exec(path);
+    if (method === "POST" && opsSupportTicketMatch) {
+      const payload = body as Partial<SupportTicketRequest & { auth: OpsAuth }>;
+      const response = createOpsSupportTicket({
+        auth: payload.auth ?? {},
+        order_id: opsSupportTicketMatch[1],
+        category: payload.category ?? "general",
+        priority: payload.priority ?? "normal",
+        subject: payload.subject ?? "",
+        message: payload.message ?? "",
+        consent: payload.consent ?? { agreed: false, no_sensitive_birth_data: true }
+      });
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    const supportTicketMatch = /^\/api\/support\/ticket\/([^/?]+)(?:\?(.*))?$/.exec(path);
+    if (method === "POST" && path === "/api/support/ticket") {
+      const response = createSupportTicket(bindSupportTicketSubject(body as SupportTicketRequest, context.identity));
+      return { status: 201, body: response as unknown as Record<string, unknown> };
+    }
+
+    if (method === "POST" && path === "/api/privacy/delete-request") {
+      const response = createPrivacyDeletionRequest(bindPrivacyDeletionSubject(body as PrivacyDeletionRequestInput, context.identity));
+      return { status: 201, body: response as unknown as Record<string, unknown> };
+    }
+
+    const supportTicketMatch = /^\/api\/ops\/support\/ticket\/([^/?]+)(?:\?(.*))?$/.exec(path);
     if (method === "GET" && supportTicketMatch) {
       const response = getSupportTicket({
         auth: readOpsAuth(supportTicketMatch[2], body),
@@ -473,18 +708,23 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/launch/growth-event") {
-      const response = recordGrowthEvent(body as LaunchGrowthEventRequest);
+    if (method === "POST" && path === "/api/ops/launch/growth-event") {
+      const payload = body as LaunchGrowthEventRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = recordGrowthEvent(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    if (method === "POST" && path === "/api/immersive/session") {
-      const response = createImmersiveSession(body as CreateImmersiveSessionRequest);
+    if (method === "POST" && path === "/api/ops/immersive/session") {
+      const payload = body as CreateImmersiveSessionRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = createImmersiveSession(payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    const immersiveSessionMatch = /^\/api\/immersive\/session\/([^/]+)$/.exec(path);
+    const immersiveSessionMatch = /^\/api\/ops\/immersive\/session\/([^/?]+)(?:\?(.*))?$/.exec(path);
     if (method === "GET" && immersiveSessionMatch) {
+      assertInternalOpsAuth(readOpsAuth(immersiveSessionMatch[2], body));
       const session = getImmersiveSession(immersiveSessionMatch[1]);
       if (!session) {
         throw new ApiError("IMMERSIVE_SESSION_NOT_FOUND", "immersive session not found or expired.", { field: "session_id", status: 404 });
@@ -492,14 +732,17 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
       return { status: 200, body: { session, privacy: session.privacy } as unknown as Record<string, unknown> };
     }
 
-    const immersiveEventMatch = /^\/api\/immersive\/session\/([^/]+)\/event$/.exec(path);
+    const immersiveEventMatch = /^\/api\/ops\/immersive\/session\/([^/]+)\/event$/.exec(path);
     if (method === "POST" && immersiveEventMatch) {
-      const response = recordStageEvent(immersiveEventMatch[1], body as StageEventRequest);
+      const payload = body as StageEventRequest & { auth?: OpsAuth };
+      assertInternalOpsAuth(payload.auth);
+      const response = recordStageEvent(immersiveEventMatch[1], payload);
       return { status: 201, body: response as unknown as Record<string, unknown> };
     }
 
-    const immersiveStreamMatch = /^\/api\/immersive\/session\/([^/]+)\/stream$/.exec(path);
+    const immersiveStreamMatch = /^\/api\/ops\/immersive\/session\/([^/?]+)\/stream(?:\?(.*))?$/.exec(path);
     if (method === "GET" && immersiveStreamMatch) {
+      assertInternalOpsAuth(readOpsAuth(immersiveStreamMatch[2], body));
       const response = getImmersiveStream(immersiveStreamMatch[1]);
       return { status: 200, body: response as unknown as Record<string, unknown> };
     }
@@ -508,6 +751,55 @@ export function handleApiRequest(method: string, path: string, body?: unknown): 
   } catch (error) {
     return toErrorEnvelope(error);
   }
+}
+
+function bindPrivacyDeletionSubject(payload: PrivacyDeletionRequestInput, identity?: RequestIdentity): PrivacyDeletionRequestInput {
+  const resolvedIdentity = identity;
+  if (!resolvedIdentity || (!resolvedIdentity.memberId && resolvedIdentity.visitorId === "visitor_guest")) {
+    throw new ApiError("DELETION_IDENTITY_REQUIRED", "data deletion requests require an existing visitor or member session.", {
+      field: "session",
+      status: 401
+    });
+  }
+  if (payload.member_id && payload.member_id !== resolvedIdentity.memberId) {
+    throw new ApiError("DELETION_SUBJECT_FORBIDDEN", "deletion request subject must match the current signed-in member.", {
+      field: "member_id",
+      status: 403
+    });
+  }
+  if (payload.visitor_id && payload.visitor_id !== resolvedIdentity.visitorId) {
+    throw new ApiError("DELETION_SUBJECT_FORBIDDEN", "deletion request visitor subject must match the current anonymous visitor.", {
+      field: "visitor_id",
+      status: 403
+    });
+  }
+  return {
+    member_id: resolvedIdentity.memberId,
+    visitor_id: resolvedIdentity.visitorId,
+    scope: payload.scope,
+    message: payload.message
+  };
+}
+
+function bindSupportTicketSubject(payload: SupportTicketRequest, identity?: RequestIdentity): SupportTicketRequest {
+  const resolvedIdentity = identity;
+  if (!resolvedIdentity || (!resolvedIdentity.memberId && resolvedIdentity.visitorId === "visitor_guest")) {
+    throw new ApiError("SUPPORT_IDENTITY_REQUIRED", "support tickets require an existing visitor or member session.", {
+      field: "session",
+      status: 401
+    });
+  }
+  const subjectId = resolvedIdentity.memberId ?? resolvedIdentity.visitorId;
+  if (payload.member_id && payload.member_id !== subjectId) {
+    throw new ApiError("SUPPORT_SUBJECT_FORBIDDEN", "support ticket subject must match the current visitor or member session.", {
+      field: "member_id",
+      status: 403
+    });
+  }
+  return {
+    ...payload,
+    member_id: subjectId
+  };
 }
 
 function readQueryValue(query: string | undefined, key: string): string | undefined {
@@ -526,7 +818,31 @@ function readOpsAuth(query: string | undefined, body: unknown): OpsAuth {
   const payload = body as Partial<{ auth: OpsAuth }> | undefined;
   return {
     token: payload?.auth?.token ?? readQueryValue(query, "admin_token"),
-    role: payload?.auth?.role ?? (readQueryValue(query, "admin_role") as OpsAuth["role"]),
-    actor_id: payload?.auth?.actor_id ?? readQueryValue(query, "actor_id")
+    role: process.env.NODE_ENV === "test" ? payload?.auth?.role ?? (readQueryValue(query, "admin_role") as OpsAuth["role"]) : undefined,
+    actor_id: undefined,
+    mfa_code: payload?.auth?.mfa_code ?? readQueryValue(query, "admin_mfa_code")
   };
+}
+
+function assertInternalOpsAuth(auth: OpsAuth | undefined): void {
+  const configuredRole = process.env.PHASE10_ADMIN_ROLE?.trim();
+  const role = process.env.NODE_ENV === "test"
+    ? auth?.role || "support_agent"
+    : configuredRole && ["ops_admin", "support_agent", "content_reviewer"].includes(configuredRole)
+      ? configuredRole as NonNullable<OpsAuth["role"]>
+      : "support_agent";
+  const token = auth?.token || "";
+  const allowedRoles: Array<NonNullable<OpsAuth["role"]>> = ["ops_admin", "support_agent", "content_reviewer"];
+  if (!getConfiguredOpsToken() || token !== getConfiguredOpsToken() || !allowedRoles.includes(role)) {
+    throw new ApiError("OPS_AUTH_REQUIRED", "ops access is not authorized.", { field: "x-admin-token", status: 401 });
+  }
+  if (process.env.PHASE10_OPS_MFA_ENABLED === "true") {
+    const configuredMfaCode = process.env.PHASE10_OPS_MFA_CODE?.trim();
+    if (!configuredMfaCode) {
+      throw new ApiError("OPS_MFA_NOT_CONFIGURED", "ops second factor is not configured.", { field: "PHASE10_OPS_MFA_CODE", status: 503 });
+    }
+    if ((auth?.mfa_code || "").trim() !== configuredMfaCode) {
+      throw new ApiError("OPS_MFA_REQUIRED", "ops second factor is required.", { field: "x-admin-mfa-code", status: 403 });
+    }
+  }
 }

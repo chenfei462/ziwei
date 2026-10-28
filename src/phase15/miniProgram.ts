@@ -65,7 +65,7 @@ export function loginMiniProgram(request: MiniProgramLoginRequest): MiniProgramL
   const campaign = request.campaign ? sanitizeText(request.campaign).slice(0, 80) : undefined;
   const openidHash = hashOpenIdFromCode(request.code);
   const existing = getWechatOpenIdBindingRecord(openidHash);
-  const memberId = existing?.member_id ?? `member_${openidHash.slice(-12)}`;
+  const memberId = request.member_id ? sanitizeText(request.member_id).slice(0, 80) : existing?.member_id ?? `member_${openidHash.slice(-12)}`;
   const binding = saveBinding({
     openid_hash: openidHash,
     visitor_id: visitorId,
@@ -131,8 +131,7 @@ export function createMiniProgramShare(request: MiniProgramShareCreateRequest): 
   const query = buildQuery({
     share_id: share.snapshot.share_id,
     channel: request.channel,
-    campaign,
-    visitor_id: request.visitor_id ? sanitizeText(request.visitor_id).slice(0, 80) : undefined
+    campaign
   });
   const path = `pages/index/index?${query}`;
   const payload: MiniProgramSharePayload = {

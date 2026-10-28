@@ -31,8 +31,7 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
         body: JSON.stringify({
           channel: "wechat_group",
           campaign: "phase14_channel_demo",
-          referrer: "phase14_wechat_group",
-          visitor_id: "visitor_phase14_demo"
+          referrer: "phase14_wechat_group"
         })
       });
       setEntry(await readJson<ChannelEntryResponse>(response, "Channel entry failed."));
@@ -40,7 +39,11 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
   }
 
   async function linkAnonymousVisitor() {
-    const visitorId = entry?.entry.visitor_id ?? "visitor_phase14_demo";
+    const visitorId = entry?.entry.visitor_id;
+    if (!visitorId) {
+      setError("Create a channel entry before linking an anonymous visitor.");
+      return;
+    }
     await runAction(async () => {
       const response = await fetch("/api/member/link-anonymous", {
         method: "POST",
@@ -61,7 +64,6 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          member_id: memberId,
           source_type: "daily_theme",
           source_id: "daily_20270816_life",
           title: "Today Stargarden channel card",
@@ -70,8 +72,7 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
           safety_flags: ["daily_observation_only"],
           share_format: "mini_program_card",
           channel: "wechat_group",
-          campaign: "phase14_channel_demo",
-          visitor_id: entry?.entry.visitor_id ?? "visitor_phase14_demo"
+          campaign: "phase14_channel_demo"
         })
       });
       setShare(await readJson<ChannelShareCreateResponse>(response, "Channel share failed."));
@@ -89,8 +90,6 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
           event_type: "share_opened",
           channel: "wechat_group",
           campaign: "phase14_channel_demo",
-          visitor_id: entry?.entry.visitor_id ?? "visitor_phase14_demo",
-          member_id: memberId,
           metadata: {
             surface: "mini_program_card"
           }
@@ -102,7 +101,7 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
 
   async function loadDashboard() {
     await runAction(async () => {
-      const response = await fetch("/api/growth/channel-dashboard");
+      const response = await fetch("/api/ops/growth/channel-dashboard");
       setDashboard(await readJson<ChannelDashboardResponse>(response, "Channel dashboard failed."));
     });
   }
@@ -167,7 +166,7 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
       {entry ? (
         <article className="phase14-result-card">
           <strong>{entry.entry.channel}</strong>
-          <span>visitor_id: {entry.entry.visitor_id}</span>
+          <span>visitor_identity: server_bound</span>
           <span>{entry.landing_url}</span>
         </article>
       ) : null}
@@ -192,6 +191,8 @@ export function ChannelDistributionPanel({ memberId }: ChannelDistributionPanelP
           <span>wechat_group: {dashboard.dashboard.by_channel.wechat_group}</span>
           <span>share_opened: {dashboard.dashboard.by_event.share_opened}</span>
           <span>mini_program_card: {dashboard.dashboard.by_share_format.mini_program_card}</span>
+          <span>disabled_channels: {dashboard.dashboard.disabled_channels.length}</span>
+          <span>wechat_group_status: {dashboard.dashboard.channel_health.find((item) => item.channel === "wechat_group")?.status ?? "unknown"}</span>
         </article>
       ) : null}
 

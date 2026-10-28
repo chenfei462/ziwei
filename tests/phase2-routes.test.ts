@@ -32,9 +32,14 @@ describe("phase 2 Next route handlers", () => {
     expect(createdResponse.status).toBe(201);
     expect(created.chart.palaces).toHaveLength(12);
 
-    const fetchedResponse = await getChartGet(new Request(`http://local/api/chart/${created.chart_id}`), {
-      params: Promise.resolve({ id: created.chart_id })
-    });
+    const fetchedResponse = await getChartGet(
+      new Request(`http://local/api/chart/${created.chart_id}`, {
+        headers: { cookie: createdResponse.headers.get("set-cookie") ?? "" }
+      }),
+      {
+        params: Promise.resolve({ id: created.chart_id })
+      }
+    );
     const fetched = await fetchedResponse.json();
 
     expect(fetchedResponse.status).toBe(200);
@@ -44,12 +49,14 @@ describe("phase 2 Next route handlers", () => {
   test("wraps the formal phase-3 interpretation response", async () => {
     const createdResponse = await createChartPost(new Request("http://local/api/chart/create", {
       method: "POST",
+      headers: { "x-visitor-id": "visitor_phase2_interpret_owner" },
       body: JSON.stringify(body)
     }));
     const created = await createdResponse.json();
 
     const interpretedResponse = await interpretPost(new Request("http://local/api/interpret", {
       method: "POST",
+      headers: { "x-visitor-id": "visitor_phase2_interpret_owner" },
       body: JSON.stringify({
         chart_id: created.chart_id,
         palace_id: "life",
@@ -63,6 +70,37 @@ describe("phase 2 Next route handlers", () => {
     expect(interpreted.status).toBe("ready");
     expect(interpreted.interpretation.safety_flags).toContain("avoid_absolute_prediction");
     expect(interpreted.trace.length).toBeGreaterThan(0);
+  });
+
+  test("blocks interpretation of a chart owned by another visitor", async () => {
+    const createdResponse = await createChartPost(
+      new Request("http://local/api/chart/create", {
+        method: "POST",
+        headers: { "x-visitor-id": "visitor_phase2_interpret_owner" },
+        body: JSON.stringify(body)
+      })
+    );
+    const created = await createdResponse.json();
+
+    const interpretedResponse = await interpretPost(
+      new Request("http://local/api/interpret", {
+        method: "POST",
+        headers: { "x-visitor-id": "visitor_phase2_interpret_stranger" },
+        body: JSON.stringify({
+          chart_id: created.chart_id,
+          palace_id: "life",
+          mode: "professional",
+          include_trace: true
+        })
+      })
+    );
+    const interpreted = await interpretedResponse.json();
+
+    expect(interpretedResponse.status).toBe(403);
+    expect(interpreted.error).toMatchObject({ code: "CHART_ACCESS_FORBIDDEN", field: "chart_id" });
+    expect(JSON.stringify(interpreted)).not.toContain("2000-08-16");
+    expect(JSON.stringify(interpreted)).not.toContain("03:30");
+    expect(JSON.stringify(interpreted)).not.toContain("涓婃捣");
   });
 
   test("returns a shared error envelope when interpretation receives an empty body", async () => {

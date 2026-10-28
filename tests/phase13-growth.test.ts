@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach } from "vitest";
+import { describe, expect, test, beforeEach, afterEach, vi } from "vitest";
 import manifest from "../src/app/manifest.js";
 import { createChart } from "../src/chartEngine.js";
 import { createDailyTheme, recordDailyCheckIn } from "../src/phase12/daily.js";
@@ -37,15 +37,20 @@ const consent = {
 
 describe("phase 13 mobile PWA and growth core", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     clearDailyForTests();
     clearGrowthForTests();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test("exposes a mobile-first PWA manifest and offline entry point", () => {
     const pwa = manifest();
 
-    expect(pwa.name).toContain("Zi Wei");
-    expect(pwa.start_url).toBe("/phase13");
+    expect(pwa.name).toContain("紫微星垣");
+    expect(pwa.start_url).toBe("/");
     expect(pwa.display).toBe("standalone");
     expect(pwa.icons?.length).toBeGreaterThanOrEqual(2);
   });
@@ -131,5 +136,43 @@ describe("phase 13 mobile PWA and growth core", () => {
     expect(firstCheckIn.progress.target_count).toBe(7);
     expect(firstCheckIn.share_snapshot.source_type).toBe("achievement");
     expect(JSON.stringify(firstCheckIn)).not.toMatch(/2000-08-16|03:30|Shanghai|data:image/);
+  });
+
+  test("keeps challenge check-ins idempotent by check-in reference", () => {
+    const memberId = "member_phase13_challenge_idempotent";
+    joinChallenge({ member_id: memberId, challenge_id: "challenge_7_day_stargarden" });
+
+    const firstCheckIn = checkInChallenge({
+      member_id: memberId,
+      challenge_id: "challenge_7_day_stargarden",
+      check_in_ref: "chart:chart_public:2027-08-16"
+    });
+    const duplicateCheckIn = checkInChallenge({
+      member_id: memberId,
+      challenge_id: "challenge_7_day_stargarden",
+      check_in_ref: "chart:chart_public:2027-08-16"
+    });
+    const nextCheckIn = checkInChallenge({
+      member_id: memberId,
+      challenge_id: "challenge_7_day_stargarden",
+      check_in_ref: "daily_20270817_life"
+    });
+
+    expect(firstCheckIn.progress.current_count).toBe(1);
+    expect(firstCheckIn.progress.last_check_in_ref).toBe("chart:chart_public:2027-08-16");
+    expect(duplicateCheckIn.progress.current_count).toBe(1);
+    expect(nextCheckIn.progress.current_count).toBe(2);
+  });
+
+  test("uses Asia Shanghai date for default challenge check-in references", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-08-15T17:00:00.000Z"));
+
+    const checkIn = checkInChallenge({
+      member_id: "member_phase13_shanghai_date",
+      challenge_id: "challenge_7_day_stargarden"
+    });
+
+    expect(checkIn.progress.last_check_in_ref).toBe("challenge_7_day_stargarden:2027-08-16");
   });
 });

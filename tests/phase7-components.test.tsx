@@ -174,7 +174,7 @@ describe("phase 7 expansion UI", () => {
     fireEvent.click(screen.getByRole("button", { name: /查看合盘规则溯源/ }));
     expect(screen.getByText("phase7_synastry_life_spouse_bridge")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/synastry/create",
+      "/api/ops/synastry/create",
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining('"no_sensitive_birth_data":true')
@@ -183,7 +183,7 @@ describe("phase 7 expansion UI", () => {
   });
 
   test("timeline panel generates annual and monthly theme cards without exposing birth details", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => timelineResponse
     } as Response);
@@ -201,5 +201,12 @@ describe("phase 7 expansion UI", () => {
     expect(screen.queryByText("2000-08-16")).not.toBeInTheDocument();
     expect(screen.queryByText("03:30")).not.toBeInTheDocument();
     expect(screen.queryByText("Shanghai")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/ops/timeline/interpret",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"palace_id":"career"')
+      })
+    );
   });
 });

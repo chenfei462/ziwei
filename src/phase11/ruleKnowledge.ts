@@ -1,6 +1,6 @@
 import { createChart } from "../chartEngine.js";
 import { ApiError } from "../errors.js";
-import { defaultRuleProfileId, getRuleProfileRecord, listRuleProfileRecords } from "./ruleProfileData.js";
+import { getDefaultRuleProfileId, getRuleProfileRecord, listRuleProfileRecords } from "./ruleProfileData.js";
 import {
   knowledgeNodeTypes,
   type CommercialPrivacy,
@@ -81,7 +81,7 @@ const hardTerms = ["必然", "死亡", "破产", "离婚", "灾祸"];
 export function listRuleProfiles(): RuleProfileListResponse {
   return {
     profiles: listRuleProfileRecords(),
-    default_profile_id: defaultRuleProfileId
+    default_profile_id: getDefaultRuleProfileId()
   };
 }
 

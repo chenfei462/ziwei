@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Zi Wei Mobile Stargarden",
-    short_name: "Stargarden",
-    description: "Mobile PWA for daily Stargarden cards, streaks, share landing pages, and community challenges.",
-    start_url: "/phase13",
+    name: "紫微星垣",
+    short_name: "紫微星垣",
+    description: "隐私友好的紫微斗数命盘、结构化解读、报告和分享网页产品。",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: "#111312",

@@ -32,7 +32,7 @@ export function TimelinePanel({ chart }: TimelinePanelProps) {
     setError(undefined);
     try {
       const parsedMonth = month ? Number(month) : undefined;
-      const response = await fetch("/api/timeline/interpret", {
+      const response = await fetch("/api/ops/timeline/interpret", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

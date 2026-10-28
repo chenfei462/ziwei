@@ -76,6 +76,46 @@ const draft: ReportDraft = {
   template_version: "v0.1",
   title: "Single chart six-palace report",
   created_at: "2026-04-30T00:00:00.000Z",
+  report_version: 1,
+  access: {
+    policy: "private_paid",
+    free_summary_enabled: true,
+    required_tier: "standard_49",
+    owner_can_read: true,
+    entitlement_required_for_private_sections: true
+  },
+  lineage: {
+    report_version_id: "report_component_v1",
+    template_id: "single_chart_six_palaces",
+    template_version: "v0.1",
+    prompt_version: "interpretation_rewrite_v2026_05_25",
+    generated_at: "2026-04-30T00:00:00.000Z",
+    ai_grounding_policy: "local_rules_trace_only"
+  },
+  share_summary: {
+    visibility: "public_redacted",
+    title: "Single chart six-palace report summary",
+    summary: "Public share only includes a redacted summary.",
+    source_section_ids: ["section_life"],
+    safety_flags: ["avoid_absolute_prediction"],
+    privacy_note: "full birth date, birth time, and location detail hidden by default."
+  },
+  export_options: [
+    {
+      format: "html",
+      enabled: true,
+      entitlement_required: true,
+      storage_provider: "local_preview",
+      readiness: "ready"
+    },
+    {
+      format: "pdf",
+      enabled: true,
+      entitlement_required: true,
+      storage_provider: "local_preview",
+      readiness: "ready"
+    }
+  ],
   chart_ref: {
     chart_id: chart.chart_id,
     snapshot_type: "chart"
@@ -123,6 +163,8 @@ const draft: ReportDraft = {
   review: {
     review_id: "review_component",
     report_id: "report_component",
+    source_type: "report",
+    source_id: "report_component",
     status: "approved",
     blocked_terms: [],
     privacy_flags: [],

@@ -247,8 +247,64 @@ export type InterpretResponse = {
     provider: "deepseek";
     model: "deepseek-v4-flash";
     status: "generated" | "fallback";
+    prompt_version?: string;
     reason?: "missing_api_key" | "test_mode" | "api_error" | "empty_model_content" | "invalid_model_json";
   };
+};
+
+export type AiGenerationRecord = {
+  generation_id: string;
+  provider: "deepseek" | "local_followup";
+  model: "deepseek-v4-flash" | "local_trace_v1";
+  prompt_version: string;
+  chart_id?: string;
+  report_id?: string;
+  input_digest: string;
+  output_digest?: string;
+  status: "generated" | "fallback" | "blocked";
+  fallback_reason?: string;
+  safety_flags: string[];
+  created_at: string;
+  privacy_note: string;
+};
+
+export const followUpTopics = ["career", "relationship", "finance", "self_growth", "annual_rhythm"] as const;
+export type FollowUpTopic = (typeof followUpTopics)[number];
+
+export type FollowUpRequest = {
+  chart_id: string;
+  report_id?: string;
+  topic: FollowUpTopic;
+  question: string;
+};
+
+export type FollowUpResponse = {
+  follow_up_id: string;
+  chart_id: string;
+  topic: FollowUpTopic;
+  question_summary: string;
+  answer: string;
+  trace: InterpretationTrace[];
+  quota: {
+    subject_id: string;
+    plan: "free" | "member";
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+  safety_flags: string[];
+  generation: AiGenerationRecord;
+};
+
+export type FollowUpQuotaUsage = {
+  quota_key: string;
+  subject_id: string;
+  plan: "free" | "member";
+  window_start: string;
+  limit: number;
+  used: number;
+  updated_at: string;
+  privacy_note: string;
 };
 
 export type ClosedTestDeviceInfo = {
@@ -699,6 +755,9 @@ export type CreatorAssetType = (typeof creatorAssetTypes)[number];
 export const contentReviewStatuses = ["approved", "needs_review", "blocked"] as const;
 export type ContentReviewStatus = (typeof contentReviewStatuses)[number];
 
+export const contentReviewSourceTypes = ["report", "ai_followup", "manual"] as const;
+export type ContentReviewSourceType = (typeof contentReviewSourceTypes)[number];
+
 export type ReportPrivacy = {
   hides_full_birth_date: true;
   hides_birth_time: true;
@@ -741,6 +800,45 @@ export type ReportTemplate = {
   supported_formats: ReportExportFormat[];
 };
 
+export const reportAccessPolicies = ["private_paid"] as const;
+export type ReportAccessPolicy = (typeof reportAccessPolicies)[number];
+
+export type ReportAccessMetadata = {
+  policy: ReportAccessPolicy;
+  free_summary_enabled: boolean;
+  required_tier: ReportTierId;
+  owner_can_read: boolean;
+  entitlement_required_for_private_sections: boolean;
+};
+
+export type ReportLineageMetadata = {
+  report_version_id: string;
+  template_id: string;
+  template_version: ReportTemplate["version"];
+  rule_profile_id?: string;
+  rule_version?: string;
+  prompt_version: string;
+  generated_at: string;
+  ai_grounding_policy: "local_rules_trace_only";
+};
+
+export type ReportShareSummary = {
+  visibility: "public_redacted";
+  title: string;
+  summary: string;
+  source_section_ids: string[];
+  safety_flags: string[];
+  privacy_note: string;
+};
+
+export type ReportExportOption = {
+  format: ReportExportFormat;
+  enabled: boolean;
+  entitlement_required: boolean;
+  storage_provider: "local_preview" | "s3_compatible";
+  readiness: "ready" | "external_config_required";
+};
+
 export type CreatorAsset = {
   asset_id: string;
   asset_type: CreatorAssetType;
@@ -753,10 +851,13 @@ export type CreatorAsset = {
 export type ContentReviewQueueItem = {
   review_id: string;
   report_id: string;
+  source_type: ContentReviewSourceType;
+  source_id: string;
   status: ContentReviewStatus;
   blocked_terms: string[];
   privacy_flags: string[];
   safety_flags: string[];
+  reviewer_id?: string;
   checked_at: string;
   notes: string[];
 };
@@ -765,12 +866,17 @@ export type ReportDraft = {
   report_id: string;
   report_type: ReportType;
   mode: InterpretationMode;
+  report_version: number;
   rule_profile_id?: string;
   rule_version?: string;
   template_id: string;
   template_version: "v0.1";
   title: string;
   created_at: string;
+  access: ReportAccessMetadata;
+  lineage: ReportLineageMetadata;
+  share_summary: ReportShareSummary;
+  export_options: ReportExportOption[];
   chart_ref?: {
     chart_id: string;
     snapshot_type: "chart" | "synastry" | "timeline";
@@ -796,11 +902,52 @@ export type ReportDraftRequest = {
   timeline?: TimelineInterpretResponse;
 };
 
+export const reportGenerationJobStatuses = ["queued", "generated", "retry_pending", "support_fallback"] as const;
+export type ReportGenerationJobStatus = (typeof reportGenerationJobStatuses)[number];
+
+export type ReportGenerationJob = {
+  job_id: string;
+  member_id?: string;
+  visitor_id?: string;
+  report_id?: string;
+  status: ReportGenerationJobStatus;
+  attempt_count: number;
+  max_attempts: number;
+  request_digest: string;
+  request_summary: {
+    report_type: ReportType;
+    mode: InterpretationMode;
+    chart_id?: string;
+  };
+  last_error_code?: string;
+  last_error_message?: string;
+  support_ticket_id?: string;
+  created_at: string;
+  updated_at: string;
+  audit_trail: SupportTicketAuditEntry[];
+  privacy_note: string;
+};
+
+export type ReportGenerationJobRequest = {
+  member_id?: string;
+  visitor_id?: string;
+  max_attempts?: number;
+  request: ReportDraftRequest;
+};
+
 export type ExportPreview = {
   export_preview_id: string;
   report_id: string;
   format: ReportExportFormat;
   preview_url: string;
+  storage?: {
+    provider: "local_preview" | "s3_compatible";
+    bucket?: string;
+    object_key: string;
+    content_type: "text/html; charset=utf-8" | "application/pdf";
+    private_acl: boolean;
+    signed_url_required: boolean;
+  };
   created_at: string;
   expires_at: string;
   review_status: ContentReviewStatus;
@@ -814,13 +961,13 @@ export type ExportPreviewRequest = {
   format: ReportExportFormat;
 };
 
-export const orderStatuses = ["draft", "pending_payment", "paid", "fulfilled", "failed", "expired", "refunded_manual"] as const;
+export const orderStatuses = ["created", "pending_payment", "paid", "failed", "cancelled", "refunded", "partially_refunded", "fulfilled"] as const;
 export type OrderStatus = (typeof orderStatuses)[number];
 
 export const orderPackageIds = ["single_report", "light_membership"] as const;
 export type OrderPackageId = (typeof orderPackageIds)[number];
 
-export const paymentProviders = ["stripe_checkout", "wechat_pay_reserved", "alipay_reserved"] as const;
+export const paymentProviders = ["stripe_checkout", "mock_checkout", "wechat_pay_reserved", "alipay_reserved"] as const;
 export type PaymentProvider = (typeof paymentProviders)[number];
 
 export const checkoutSessionStatuses = ["open", "completed", "expired"] as const;
@@ -857,6 +1004,8 @@ export type Order = {
   updated_at: string;
   fulfilled_at?: string;
   refunded_at?: string;
+  refunded_amount_cents?: number;
+  refund_reason?: string;
   compliance: {
     service_terms_accepted: boolean;
     privacy_policy_accepted: boolean;
@@ -871,6 +1020,7 @@ export type OrderCreateRequest = {
   package_id: OrderPackageId;
   tier_id: ReportTierId;
   member_id?: string;
+  provider?: PaymentProvider;
   consent: CommercialConsent;
 };
 
@@ -886,6 +1036,12 @@ export type CheckoutSession = {
   sandbox_webhook?: {
     raw_body: string;
     signature_header: string;
+  };
+  provider_requirements: {
+    webhook_secret_env: string;
+    signature_header: string;
+    idempotency_key_source: string;
+    production_base_url_env?: string;
   };
 };
 
@@ -914,11 +1070,104 @@ export type PaymentEvent = {
   order: Order;
 };
 
+export const refundStatuses = ["requested", "succeeded", "failed"] as const;
+export type RefundStatus = (typeof refundStatuses)[number];
+
+export type RefundRecord = {
+  refund_id: string;
+  order_id: string;
+  provider: PaymentProvider;
+  provider_refund_id?: string;
+  amount_cents: number;
+  status: RefundStatus;
+  reason: string;
+  requested_by: string;
+  ticket_id?: string;
+  provider_refund_request?: {
+    provider: PaymentProvider;
+    method: "POST";
+    endpoint: string;
+    idempotency_key: string;
+    signature_algorithm: "WECHATPAY2-SHA256-RSA2048" | "RSA2" | "HMAC-SHA256";
+    signed_payload_digest: string;
+    submission_status: "mock_submitted" | "sandbox_ready" | "external_configuration_required";
+    requiredEnv: string[];
+    privacy_note: string;
+  };
+  created_at: string;
+  updated_at: string;
+  privacy_note: string;
+};
+
+export type ProviderStatementRowType = "payment" | "refund";
+
+export type ProviderStatementRow = {
+  provider_transaction_id: string;
+  order_id?: string;
+  refund_id?: string;
+  type: ProviderStatementRowType;
+  amount_cents: number;
+  occurred_at: string;
+  raw_reference_digest?: string;
+};
+
+export type ProviderStatement = {
+  statement_id: string;
+  provider: PaymentProvider;
+  period_start: string;
+  period_end: string;
+  imported_at: string;
+  imported_by: string;
+  row_count: number;
+  rows: ProviderStatementRow[];
+  privacy_note: string;
+};
+
+export type ProviderStatementImportRequest = {
+  auth: OpsAuth;
+  statement_id: string;
+  provider: PaymentProvider;
+  period_start: string;
+  period_end: string;
+  csv?: string;
+  rows?: Array<{
+    provider_transaction_id: string;
+    order_id?: string;
+    refund_id?: string;
+    type: ProviderStatementRowType;
+    amount_cents: number;
+    occurred_at: string;
+    raw_reference?: string;
+  }>;
+};
+
+export type ProviderStatementImportResponse = {
+  statement: ProviderStatement;
+  reconciliation: {
+    matched_row_count: number;
+    amount_mismatch_count: number;
+    orphan_provider_row_count: number;
+    alerts: OpsPaymentReconciliationAlert[];
+  };
+  privacy: CommercialPrivacy;
+};
+
+export type ProviderStatementPreviewResponse = ProviderStatementImportResponse & {
+  persistence: {
+    persisted: false;
+    audit_written: false;
+    raw_reference_storage: "digest_only";
+  };
+};
+
 export type MemberEntitlement = {
   entitlement_id: string;
   member_id: string;
   report_id: string;
   source_order_id: string;
+  tier_id?: ReportTierId;
+  access_level?: "free_summary" | "standard_report" | "premium_report" | "manual_full_access";
+  benefits?: string[];
   has_access: boolean;
   can_read_report: boolean;
   export_preview_credits: number;
@@ -942,6 +1191,9 @@ export type CommercialDashboardSummary = {
   paid_orders: number;
   fulfilled_orders: number;
   failed_orders: number;
+  cancelled_orders: number;
+  refunded_orders: number;
+  partially_refunded_orders: number;
   refunded_manual_orders: number;
   payment_conversion_rate: number;
   average_order_value_cents: number;
@@ -963,6 +1215,12 @@ export type SupportTicketPriority = (typeof supportTicketPriorities)[number];
 export const supportTicketStatuses = ["open", "in_progress", "resolved", "closed"] as const;
 export type SupportTicketStatus = (typeof supportTicketStatuses)[number];
 
+export const dataDeletionScopes = ["birth_data", "reports", "shares", "account_closure", "all_personal_data"] as const;
+export type DataDeletionScope = (typeof dataDeletionScopes)[number];
+
+export const dataDeletionStatuses = ["requested", "verifying", "processing", "completed", "rejected", "cancelled"] as const;
+export type DataDeletionStatus = (typeof dataDeletionStatuses)[number];
+
 export const launchGrowthEventTypes = [
   "chart_to_purchase",
   "preview_to_payment",
@@ -977,6 +1235,20 @@ export type OpsAuth = {
   token?: string;
   role?: OpsRole;
   actor_id?: string;
+  mfa_code?: string;
+};
+
+export type AdminAuditLog = {
+  audit_log_id: string;
+  actor_id: string;
+  actor_role: OpsRole;
+  action: string;
+  target_type: string;
+  target_id?: string;
+  metadata: Record<string, string | number | boolean | undefined>;
+  ip_hash?: string;
+  created_at: string;
+  privacy_note: string;
 };
 
 export type LaunchPaymentConfig = {
@@ -988,6 +1260,134 @@ export type LaunchPaymentConfig = {
   webhook_secret_configured: boolean;
   max_production_amount_cents: number;
   public_status: "sandbox_only" | "production_ready" | "rollback_active" | "needs_webhook_secret";
+  sandbox_checkout_confirm?: {
+    enabled: boolean;
+    production_safe: false;
+    route: "/api/checkout/sandbox/confirm";
+    page: "/commercial/checkout-sandbox";
+    requiredEnv: ["ZIWEI_ENABLE_SANDBOX_CHECKOUT_CONFIRM"];
+    allowedEnvironments: readonly ["local", "test", "preproduction"];
+    blockers: string[];
+  };
+  china_payment_providers?: {
+    wechat_pay: {
+      provider: "wechat_pay_reserved";
+      ready: boolean;
+      provider_mode: "sandbox" | "production";
+      requiredEnv: readonly [
+        "WECHAT_PAY_MCH_ID",
+        "WECHAT_PAY_APP_ID",
+        "WECHAT_PAY_API_V3_KEY",
+        "WECHAT_PAY_MERCHANT_CERT_SERIAL",
+        "WECHAT_PAY_PRIVATE_KEY",
+        "WECHAT_PAY_PLATFORM_CERT",
+        "WECHAT_PAY_PLATFORM_CERT_SERIAL",
+        "WECHAT_PAY_NOTIFY_URL",
+        "WECHAT_PAY_CHECKOUT_BASE_URL"
+      ];
+      callback_signature_header: "wechatpay-signature";
+      blockers: string[];
+    };
+    alipay: {
+      provider: "alipay_reserved";
+      ready: boolean;
+      provider_mode: "sandbox" | "production";
+      requiredEnv: readonly [
+        "ALIPAY_APP_ID",
+        "ALIPAY_PRIVATE_KEY",
+        "ALIPAY_PUBLIC_KEY",
+        "ALIPAY_GATEWAY_URL",
+        "ALIPAY_NOTIFY_URL",
+        "ALIPAY_CHECKOUT_BASE_URL"
+      ];
+      callback_signature_header: "alipay-signature";
+      blockers: string[];
+    };
+  };
+  database?: {
+    ready: boolean;
+    mode: "postgresql" | "not_configured";
+    safeDatabaseUrl?: string;
+    safeDirectUrl?: string;
+    requiredTables: string[];
+    migrationPath: string;
+    blockers: string[];
+  };
+  birth_data_encryption?: {
+    ready: boolean;
+    algorithm: "aes-256-gcm";
+    requiredEnv: ["ZIWEI_BIRTH_DATA_ENCRYPTION_KEY"];
+    blockers: string[];
+  };
+  login?: {
+    ready: boolean;
+    providers: {
+      sms: {
+        provider: string;
+        ready: boolean;
+        requiredEnv: string[];
+      };
+      wechat_web: {
+        provider: "wechat_web";
+        ready: boolean;
+        requiredEnv: string[];
+      };
+    };
+    session: {
+      httpOnly: true;
+      sameSite: "Lax";
+      maxAgeSeconds: number;
+      secretConfigured: boolean;
+    };
+    blockers: string[];
+  };
+  wechat_share?: {
+    ready: boolean;
+    requiredEnv: string[];
+    blockers: string[];
+    jsApiList: ["updateAppMessageShareData", "updateTimelineShareData"];
+    manualVerification: string[];
+  };
+  ops_security?: {
+    mfa_enabled: boolean;
+    mfa_configured: boolean;
+    requiredEnv: string[];
+    blockers: string[];
+  };
+  rate_limit?: {
+    provider: "memory" | "redis_rest";
+    ready: boolean;
+    production_required: boolean;
+    requiredEnv: ["ZIWEI_RATE_LIMIT_REDIS_REST_URL", "ZIWEI_RATE_LIMIT_REDIS_REST_TOKEN"];
+    blockers: string[];
+  };
+  export_storage?: {
+    provider: "local_preview" | "s3_compatible";
+    ready: boolean;
+    production_required: boolean;
+    bucket?: string;
+    endpoint_configured: boolean;
+    public_base_url_configured: boolean;
+    requiredEnv: readonly [
+      "ZIWEI_EXPORT_STORAGE_ENDPOINT",
+      "ZIWEI_EXPORT_STORAGE_BUCKET",
+      "ZIWEI_EXPORT_STORAGE_ACCESS_KEY_ID",
+      "ZIWEI_EXPORT_STORAGE_SECRET_ACCESS_KEY",
+      "ZIWEI_EXPORT_STORAGE_PUBLIC_BASE_URL"
+    ];
+    blockers: string[];
+  };
+  observability?: {
+    ready: boolean;
+    log_sink_configured: boolean;
+    metrics_configured: boolean;
+    alert_webhook_configured: boolean;
+    alert_webhook_secret_configured: boolean;
+    trace_exporter_configured: boolean;
+    backup_healthcheck_configured: boolean;
+    requiredEnv: readonly ["OBS_LOG_SINK", "OBS_METRICS_ENDPOINT", "OBS_ALERT_WEBHOOK_URL", "OBS_ALERT_WEBHOOK_SECRET", "OBS_TRACE_EXPORTER", "OBS_BACKUP_HEALTHCHECK_URL"];
+    blockers: string[];
+  };
 };
 
 export type LaunchPaymentConfigInput = {
@@ -997,11 +1397,13 @@ export type LaunchPaymentConfigInput = {
   rollout_percent?: number;
   rollback_enabled?: boolean;
   max_production_amount_cents?: number;
+  sandbox_checkout_confirm_enabled?: boolean;
 };
 
 export type PaymentLaunchGateRequest = {
   member_id: string;
   amount_cents: number;
+  provider?: PaymentProvider;
   config?: LaunchPaymentConfig;
 };
 
@@ -1013,7 +1415,8 @@ export type PaymentLaunchGateResult = {
     | "outside_rollout"
     | "rollback_enabled"
     | "amount_exceeds_limit"
-    | "webhook_secret_missing";
+    | "webhook_secret_missing"
+    | "china_payment_provider_not_ready";
   rollout_bucket: number;
   provider_mode: LaunchPaymentConfig["provider_mode"];
 };
@@ -1033,11 +1436,171 @@ export type OpsOrderListResponse = {
   privacy: CommercialPrivacy;
 };
 
+export type OpsContentReviewListRequest = {
+  auth: OpsAuth;
+  status?: ContentReviewStatus;
+  report_id?: string;
+  source_type?: ContentReviewSourceType;
+};
+
+export type OpsContentReviewListResponse = {
+  reviews: ContentReviewQueueItem[];
+  summary: Record<ContentReviewStatus, number> & {
+    total: number;
+  };
+  filters: {
+    status?: ContentReviewStatus;
+    report_id?: string;
+    source_type?: ContentReviewSourceType;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    raw_content_hidden: true;
+    admin_required: true;
+  };
+};
+
+export type OpsUserSummary = {
+  member_id: string;
+  display_name: string;
+  created_at: string;
+  upgraded_from_visitor_id?: string;
+  has_email_hash: boolean;
+  has_phone_hash: boolean;
+  chart_count: number;
+  report_count: number;
+  order_count: number;
+  entitlement_count: number;
+  support_ticket_count: number;
+  privacy_note: string;
+};
+
+export type OpsAnonymousVisitorSummary = {
+  visitor_id: string;
+  first_seen_at: string;
+  upgraded_member_id?: string;
+  upgraded_at?: string;
+  chart_count: number;
+  privacy_note: string;
+};
+
+export type OpsUserListResponse = {
+  users: OpsUserSummary[];
+  anonymous_visitors: OpsAnonymousVisitorSummary[];
+  filters: {
+    member_id?: string;
+    visitor_id?: string;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    contact_hashes_hidden: true;
+    admin_required: true;
+  };
+};
+
+export type OpsReportSummary = {
+  report_id: string;
+  report_type: ReportType;
+  mode: InterpretationMode;
+  title: string;
+  created_at: string;
+  rule_profile_id?: string;
+  rule_version?: string;
+  report_version: number;
+  prompt_version: string;
+  access_policy: ReportAccessPolicy;
+  free_summary_enabled: boolean;
+  template_id: string;
+  template_version: "v0.1";
+  chart_id?: string;
+  review_status: ContentReviewStatus;
+  section_count: number;
+  creator_asset_count: number;
+  safety_flags: string[];
+  price_tier_hint: ReportTierId;
+  privacy_note: string;
+};
+
+export type OpsReportListResponse = {
+  reports: OpsReportSummary[];
+  filters: {
+    report_id?: string;
+    chart_id?: string;
+    review_status?: ContentReviewStatus;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    report_body_hidden: true;
+    admin_required: true;
+  };
+};
+
+export type OpsShareSummary = {
+  share_id: string;
+  source_type: ShareLandingSourceType;
+  source_id: string;
+  title: string;
+  summary: string;
+  keyword_count: number;
+  safety_flags: string[];
+  created_at: string;
+  privacy_note: string;
+};
+
+export type OpsShareListResponse = {
+  shares: OpsShareSummary[];
+  filters: {
+    share_id?: string;
+    source_id?: string;
+    source_type?: ShareLandingSourceType;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    share_snapshot_redacted: true;
+    admin_required: true;
+  };
+};
+
+export const opsSensitiveRecordTypes = ["chart", "report", "order", "share", "support_ticket"] as const;
+export type OpsSensitiveRecordType = (typeof opsSensitiveRecordTypes)[number];
+
+export type OpsSensitiveRecordRevealRequest = {
+  auth: OpsAuth;
+  record_type: OpsSensitiveRecordType;
+  record_id: string;
+  reason: string;
+  second_confirmed?: boolean;
+  ticket_id?: string;
+};
+
+export type OpsSensitiveRecordRevealResponse = {
+  record_type: OpsSensitiveRecordType;
+  record_id: string;
+  record: Record<string, unknown>;
+  audit_log: AdminAuditLog;
+  privacy: {
+    sensitive_fields_visible: true;
+    admin_only: true;
+    requires_second_confirmation: true;
+    audit_logged: true;
+    raw_birth_profile_decryption_available: false;
+  };
+};
+
+export type OpsAdminAuditListResponse = {
+  logs: AdminAuditLog[];
+  privacy: {
+    metadata_redacted: true;
+    admin_required: true;
+    raw_birth_data_hidden: true;
+  };
+};
+
 export type OpsOrderNote = {
   note_id: string;
   order_id: string;
   ticket_id?: string;
-  action: "manual_refund_marked" | "support_note_added" | "webhook_exception";
+  action: "manual_refund_marked" | "partial_refund_marked" | "entitlement_reissued" | "support_note_added" | "webhook_exception";
   note: string;
   actor_role: OpsRole;
   actor_id?: string;
@@ -1049,12 +1612,178 @@ export type OpsRefundRequest = {
   order_id: string;
   reason: string;
   ticket_id?: string;
+  amount_cents?: number;
 };
 
 export type OpsRefundResponse = {
   order: Order;
+  refund: RefundRecord;
   note: OpsOrderNote;
   privacy: CommercialPrivacy;
+};
+
+export type OpsEntitlementReissueRequest = {
+  auth: OpsAuth;
+  order_id: string;
+  reason: string;
+  ticket_id?: string;
+  export_preview_credits?: number;
+};
+
+export type OpsEntitlementReissueResponse = {
+  entitlement: MemberEntitlement;
+  note: OpsOrderNote;
+  privacy: CommercialPrivacy;
+};
+
+export type OpsPaymentReconciliationProviderSummary = {
+  provider: PaymentProvider;
+  order_count: number;
+  payment_event_count: number;
+  refund_record_count: number;
+  gross_amount_cents: number;
+  refunded_amount_cents: number;
+  net_amount_cents: number;
+};
+
+export type OpsPaymentReconciliationSummary = {
+  order_count: number;
+  payment_event_count: number;
+  gross_amount_cents: number;
+  refunded_amount_cents: number;
+  net_amount_cents: number;
+  entitlement_gap_count: number;
+  duplicate_webhook_count: number;
+  refund_record_count: number;
+};
+
+export type OpsPaymentReconciliationResponse = {
+  summary: OpsPaymentReconciliationSummary;
+  by_provider: Record<PaymentProvider, OpsPaymentReconciliationProviderSummary>;
+  provider_statements: {
+    summary: {
+      statement_count: number;
+      statement_row_count: number;
+      matched_row_count: number;
+      amount_mismatch_count: number;
+      orphan_provider_row_count: number;
+    };
+    statements: Array<{
+      statement_id: string;
+      provider: PaymentProvider;
+      period_start: string;
+      period_end: string;
+      imported_at: string;
+      imported_by: string;
+      row_count: number;
+      privacy_note: string;
+    }>;
+    discrepancies: Array<{
+      type: "amount_mismatch" | "orphan_provider_row";
+      provider: PaymentProvider;
+      provider_transaction_id: string;
+      order_id?: string;
+      refund_id?: string;
+      statement_amount_cents: number;
+      internal_amount_cents?: number;
+      privacy_note: string;
+    }>;
+  };
+  refunds: Array<{
+    refund_id: string;
+    order_id: string;
+    provider: PaymentProvider;
+    amount_cents: number;
+    status: RefundStatus;
+    requested_by: string;
+    ticket_id?: string;
+    created_at: string;
+    privacy_note: string;
+  }>;
+  entitlement_gaps: Array<{
+    order_id: string;
+    report_id: string;
+    member_id: string;
+    status: OrderStatus;
+  }>;
+  alerts: OpsPaymentReconciliationAlert[];
+  privacy: CommercialPrivacy;
+};
+
+export type OpsPaymentReconciliationAlert = {
+  code:
+    | "PROVIDER_STATEMENT_AMOUNT_MISMATCH"
+    | "PROVIDER_STATEMENT_ORPHAN_ROWS"
+    | "ENTITLEMENT_GAP_DETECTED"
+    | "DUPLICATE_WEBHOOK_REPLAY";
+  severity: "info" | "warning" | "critical";
+  provider?: PaymentProvider;
+  count: number;
+  title: string;
+  detail: string;
+  action: string;
+  privacy_note: string;
+};
+
+export type OpsPaymentAlertWebhookRequest = {
+  auth: OpsAuth;
+  mode?: "dry_run" | "send";
+  reason: string;
+  sender?: OpsPaymentAlertWebhookSender;
+};
+
+export type OpsPaymentAlertWebhookDeliveryRequest = {
+  url: string;
+  headers: Record<string, string>;
+  body: string;
+};
+
+export type OpsPaymentAlertWebhookSenderResult = {
+  ok: boolean;
+  status: number;
+  response_digest?: string;
+};
+
+export type OpsPaymentAlertWebhookSender = (
+  request: OpsPaymentAlertWebhookDeliveryRequest
+) => Promise<OpsPaymentAlertWebhookSenderResult> | OpsPaymentAlertWebhookSenderResult;
+
+export type OpsPaymentAlertWebhookPayload = {
+  event_type: "ops.payment_reconciliation_alerts";
+  event_id: string;
+  created_at: string;
+  summary: {
+    alert_count: number;
+    critical_count: number;
+    warning_count: number;
+    info_count: number;
+  };
+  alerts: OpsPaymentReconciliationAlert[];
+  privacy_note: string;
+};
+
+export type OpsPaymentAlertWebhookResponse = {
+  status: "dry_run" | "blocked" | "ready_to_send" | "delivered" | "failed";
+  payload: OpsPaymentAlertWebhookPayload;
+  delivery: {
+    configured: boolean;
+    attempted: boolean;
+    http_status?: number;
+    response_digest?: string;
+    error_code?: "ALERT_WEBHOOK_DELIVERY_FAILED" | "ALERT_WEBHOOK_DELIVERY_EXCEPTION";
+    endpoint_digest?: string;
+    signature_algorithm: "HMAC-SHA256";
+    signature_digest: string;
+    idempotency_key: string;
+    configuration_required?: "OBS_ALERT_WEBHOOK_URL" | "OBS_ALERT_WEBHOOK_SECRET";
+  };
+  audit_log: AdminAuditLog;
+  privacy: {
+    sensitive_fields_redacted: true;
+    raw_provider_reference_hidden: true;
+    raw_webhook_url_hidden: true;
+    admin_required: true;
+  };
 };
 
 export type SupportTicketConsent = {
@@ -1076,7 +1805,7 @@ export type SupportTicketRequest = {
 export type SupportTicketAuditEntry = {
   audit_id: string;
   action: string;
-  actor_role: OpsRole | "user";
+  actor_role: OpsRole | "user" | "system";
   actor_id?: string;
   note?: string;
   created_at: string;
@@ -1098,6 +1827,80 @@ export type SupportTicket = {
   resolved_at?: string;
   consent: SupportTicketConsent;
   audit_trail: SupportTicketAuditEntry[];
+};
+
+export type DataDeletionRequestRecord = {
+  deletion_request_id: string;
+  member_id?: string;
+  visitor_id?: string;
+  ticket_id?: string;
+  status: DataDeletionStatus;
+  scope: DataDeletionScope;
+  requested_at: string;
+  updated_at: string;
+  completed_at?: string;
+  audit_log_id?: string;
+  audit_trail: SupportTicketAuditEntry[];
+  privacy_note: string;
+};
+
+export type PrivacyDeletionRequestInput = {
+  member_id?: string;
+  visitor_id?: string;
+  scope?: DataDeletionScope;
+  message?: string;
+};
+
+export type PrivacyDeletionRequestResponse = {
+  deletion_request: DataDeletionRequestRecord;
+  ticket: SupportTicket;
+  privacy: {
+    sensitive_fields_masked: true;
+    destructive_action_requires_second_confirm: true;
+    raw_birth_data_removed_from_ops_response: true;
+  };
+};
+
+export type OpsDataDeletionListRequest = {
+  auth: OpsAuth;
+  status?: DataDeletionStatus;
+  member_id?: string;
+  visitor_id?: string;
+};
+
+export type OpsDataDeletionListResponse = {
+  requests: DataDeletionRequestRecord[];
+  summary: Record<DataDeletionStatus, number> & {
+    total: number;
+  };
+  filters: {
+    status?: DataDeletionStatus;
+    member_id?: string;
+    visitor_id?: string;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    destructive_action_requires_second_confirm: true;
+    raw_birth_data_removed_from_ops_response: true;
+  };
+};
+
+export type OpsDataDeletionUpdateRequest = {
+  auth: OpsAuth;
+  deletion_request_id: string;
+  status: DataDeletionStatus;
+  note: string;
+  second_confirmed?: boolean;
+};
+
+export type OpsDataDeletionUpdateResponse = {
+  deletion_request: DataDeletionRequestRecord;
+  ticket?: SupportTicket;
+  privacy: {
+    sensitive_fields_masked: true;
+    destructive_action_requires_second_confirm: true;
+    raw_birth_data_removed_from_ops_response: true;
+  };
 };
 
 export type SupportTicketUpdateRequest = {
@@ -1156,6 +1959,75 @@ export type LaunchOperationsDashboard = {
   privacy: CommercialPrivacy;
 };
 
+export type InternalGrowthChannelMixItem = {
+  channel: ChannelSource;
+  event_count: number;
+  unique_visitors: number;
+  event_share_percent: number;
+  visitor_share_percent: number;
+  status: "healthy" | "watch" | "pause_candidate";
+};
+
+export type InternalGrowthProxySummary = {
+  mode: "proxy_only";
+  exact_roi_available: false;
+  channel_events: number;
+  unique_visitors: number;
+  launch_events: number;
+  launch_members: number;
+  shared_members: number;
+  shared_launch_events: number;
+  launch_value_cents: number;
+  proxy_conversion_rate: number;
+  proxy_value_per_shared_member_cents: number;
+  proxy_value_per_channel_event_cents: number;
+};
+
+export type InternalGrowthAnomaly = {
+  code: string;
+  severity: "info" | "warn" | "critical";
+  title: string;
+  detail: string;
+  recommendation: string;
+  affected_channels: ChannelSource[];
+};
+
+export type InternalGrowthInsights = {
+  launch_growth: GrowthDashboardSummary;
+  channel_dashboard: ChannelDashboardSummary;
+  channel_mix: InternalGrowthChannelMixItem[];
+  proxy: InternalGrowthProxySummary;
+  anomalies: InternalGrowthAnomaly[];
+  measurement_note: string;
+  privacy: CommercialPrivacy;
+};
+
+export type OpsOverview = {
+  modules: {
+    users: number;
+    anonymous_visitors: number;
+    charts: number;
+    reports: number;
+    orders: number;
+    payment_events: number;
+    entitlements: number;
+    support_tickets: number;
+    data_deletion_requests: number;
+    feedback: number;
+    content_rules: number;
+    content_reviews: number;
+    shares: number;
+    channel_events: number;
+    system_logs: number;
+    admin_audit_logs: number;
+  };
+  privacy: {
+    sensitive_fields_masked: true;
+    exports_redacted: true;
+    admin_required: true;
+  };
+};
+
 export const ruleProfileReviewStatuses = ["confirmed", "experimental", "needs_consultant_review"] as const;
 export type RuleProfileReviewStatus = (typeof ruleProfileReviewStatuses)[number];
 
@@ -1164,6 +2036,18 @@ export type RuleVersion = {
   label: string;
   released_at: string;
   source: string;
+};
+
+export type RuleVersionStateRecord = {
+  rule_version_id: string;
+  profile_id: string;
+  label: string;
+  status: RuleProfileReviewStatus;
+  active_default: boolean;
+  config: RuleConfig;
+  released_at?: string;
+  updated_at: string;
+  privacy_note: string;
 };
 
 export type RuleProfile = {
@@ -1182,6 +2066,61 @@ export type RuleProfile = {
 export type RuleProfileListResponse = {
   profiles: RuleProfile[];
   default_profile_id: string;
+};
+
+export type OpsRuleProfileSummary = {
+  profile_id: string;
+  label: string;
+  description: string;
+  version_id: string;
+  version_label: string;
+  released_at: string;
+  source: string;
+  consultant_review_status: RuleProfileReviewStatus;
+  is_active_default: boolean;
+  can_promote_to_default: boolean;
+  risk_note: string;
+  supported_features: string[];
+  safety_flags: string[];
+  rule_config_summary: Pick<
+    RuleConfig,
+    "school_id" | "zi_hour_day_boundary" | "leap_month_policy" | "true_solar_time_policy" | "four_transform_policy" | "interpretation_style"
+  >;
+};
+
+export type OpsRuleProfileListResponse = {
+  active_default_profile_id: string;
+  profiles: OpsRuleProfileSummary[];
+  privacy: {
+    admin_required: true;
+    raw_birth_data_hidden: true;
+    report_body_hidden: true;
+    prompt_body_hidden: true;
+    rule_config_visible: true;
+  };
+};
+
+export type OpsRuleProfilePromotionRequest = {
+  auth: OpsAuth;
+  profile_id: string;
+  reason: string;
+  second_confirmed?: boolean;
+  ticket_id?: string;
+};
+
+export type OpsRuleProfilePromotionResponse = {
+  previous_default_profile_id: string;
+  active_default_profile_id: string;
+  promoted_profile: OpsRuleProfileSummary;
+  audit_log: AdminAuditLog;
+  privacy: {
+    admin_required: true;
+    requires_second_confirmation: true;
+    audit_logged: true;
+    raw_birth_data_hidden: true;
+    report_body_hidden: true;
+    prompt_body_hidden: true;
+  };
 };
 
 export type RuleDiff = {
@@ -1448,7 +2387,7 @@ export type DailyCheckInResponse = {
 export const pwaInstallStates = ["unsupported", "prompt_available", "installed", "dismissed"] as const;
 export type PwaInstallState = (typeof pwaInstallStates)[number];
 
-export const shareLandingSourceTypes = ["daily_theme", "star_atlas", "achievement", "seasonal_theme"] as const;
+export const shareLandingSourceTypes = ["daily_theme", "star_atlas", "achievement", "seasonal_theme", "chart_summary", "report_summary"] as const;
 export type ShareLandingSourceType = (typeof shareLandingSourceTypes)[number];
 
 export const referralEventTypes = [
@@ -1572,6 +2511,7 @@ export type ChallengeProgress = {
   joined_at?: string;
   completed_at?: string;
   last_check_in_ref?: string;
+  checked_in_refs?: string[];
   privacy_note: string;
 };
 
@@ -1656,6 +2596,24 @@ export type ChannelEntryResponse = {
   privacy: DailyPrivacy;
 };
 
+export type UserAccount = {
+  member_id: string;
+  display_name: string;
+  email_hash?: string;
+  phone_hash?: string;
+  created_at: string;
+  upgraded_from_visitor_id?: string;
+  privacy_note: string;
+};
+
+export type AnonymousVisitor = {
+  visitor_id: string;
+  first_seen_at: string;
+  upgraded_member_id?: string;
+  upgraded_at?: string;
+  privacy_note: string;
+};
+
 export type AnonymousLink = {
   link_id: string;
   visitor_id: string;
@@ -1668,12 +2626,73 @@ export type AnonymousLink = {
 export type AnonymousLinkRequest = {
   visitor_id: string;
   member_id: string;
+  email?: string;
+  phone?: string;
+  display_name?: string;
   openid_placeholder?: string;
 };
 
 export type AnonymousLinkResponse = {
   link: AnonymousLink;
+  user: UserAccount;
+  visitor: AnonymousVisitor;
+  migrated: {
+    chart_ids: string[];
+  };
   privacy: DailyPrivacy;
+};
+
+export type SmsVerificationChallenge = {
+  challenge_id: string;
+  phone_hash: string;
+  code_hash: string;
+  provider: string;
+  template_id: string;
+  purpose: "login";
+  attempt_count: number;
+  max_attempts: number;
+  created_at: string;
+  expires_at: string;
+  consumed_at?: string;
+  delivery_status: "mock_sent" | "sent";
+  provider_message_id?: string;
+  privacy_note: string;
+};
+
+export type SmsVerificationSendRequest = {
+  phone: string;
+};
+
+export type SmsVerificationSendResponse = {
+  challenge_id: string;
+  masked_phone: string;
+  expires_at: string;
+  delivery: {
+    provider: string;
+    template_id: string;
+    status: "mock_sent" | "sent";
+    external_delivery_required: boolean;
+    message_id?: string;
+  };
+  privacy: DailyPrivacy;
+};
+
+export type SmsVerificationLoginRequest = {
+  phone: string;
+  code: string;
+  visitor_id: string;
+  member_id?: string;
+  display_name?: string;
+};
+
+export type SmsVerificationLoginResponse = AnonymousLinkResponse & {
+  challenge_id: string;
+  session: {
+    member_id: string;
+    visitor_id: string;
+    http_only_cookie: true;
+    max_age_seconds: number;
+  };
 };
 
 export type MiniProgramShareCard = {
@@ -1733,6 +2752,21 @@ export type ChannelDashboardSummary = {
   by_share_format: Record<ChannelShareFormat, number>;
   report_intent_events: number;
   challenge_join_events: number;
+  disabled_channels: ChannelSource[];
+  channel_health: Array<{
+    channel: ChannelSource;
+    status: "healthy" | "watch" | "pause_candidate" | "paused";
+    event_count: number;
+    unique_visitors: number;
+    duplicate_event_count: number;
+    duplicate_rate: number;
+    report_intent_events: number;
+    conversion_proxy_rate: number;
+    disabled: boolean;
+    reason: string;
+    recommendation: string;
+    privacy_note: string;
+  }>;
   privacy: DailyPrivacy;
 };
 
@@ -1795,6 +2829,7 @@ export type MiniProgramSession = {
 export type MiniProgramLoginRequest = {
   code: string;
   visitor_id?: string;
+  member_id?: string;
   channel: ChannelSource;
   campaign?: string;
 };
@@ -1893,4 +2928,42 @@ export type MiniProgramReminderEventResponse = {
 export type MiniProgramReleaseGateResponse = {
   release_gate: MiniProgramReleaseGate;
   privacy: DailyPrivacy;
+};
+
+export const productEventTypes = [
+  "chart_started",
+  "chart_completed",
+  "interpretation_viewed",
+  "share_created",
+  "registration_completed",
+  "order_created",
+  "payment_result"
+] as const;
+export type ProductEventType = (typeof productEventTypes)[number];
+
+export type ProductEventRecord = {
+  product_event_id: string;
+  type: ProductEventType;
+  created_at: string;
+  visitor_id?: string;
+  member_id?: string;
+  chart_id?: string;
+  share_id?: string;
+  order_id?: string;
+  report_id?: string;
+  result?: string;
+  metadata: Record<string, string | number | boolean>;
+  privacy_note: string;
+};
+
+export type ProductAnalyticsSummary = {
+  total_events: number;
+  events_by_type: Record<ProductEventType, number>;
+  events: ProductEventRecord[];
+  privacy: {
+    stores_full_birth_date: false;
+    stores_birth_time: false;
+    stores_location_detail: false;
+    stores_video_frame: false;
+  };
 };

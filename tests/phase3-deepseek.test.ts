@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { createChart } from "../src/chartEngine.js";
+import { POST as createChartPost } from "../src/app/api/chart/create/route.js";
 import { POST as interpretPost } from "../src/app/api/interpret/route.js";
 
 const birthProfile = {
@@ -18,9 +18,10 @@ const birthProfile = {
   gender_rule: "traditional_male" as const
 };
 
-function interpretRequest(chartId: string) {
+function interpretRequest(chartId: string, visitorId: string) {
   return new Request("http://local/api/interpret", {
     method: "POST",
+    headers: { "x-visitor-id": visitorId },
     body: JSON.stringify({
       chart_id: chartId,
       palace_id: "life",
@@ -28,6 +29,17 @@ function interpretRequest(chartId: string) {
       include_trace: true
     })
   });
+}
+
+async function createOwnedChart(visitorId: string) {
+  const response = await createChartPost(
+    new Request("http://local/api/chart/create", {
+      method: "POST",
+      headers: { "x-visitor-id": visitorId },
+      body: JSON.stringify({ birth_profile: birthProfile })
+    })
+  );
+  return response.json();
 }
 
 describe("phase 3 DeepSeek interpretation route", () => {
@@ -38,7 +50,7 @@ describe("phase 3 DeepSeek interpretation route", () => {
 
   test("calls deepseek-v4-flash and returns generated interpretation copy", async () => {
     process.env.DEEPSEEK_API_KEY = "test_deepseek_key";
-    const chart = createChart({ birth_profile: birthProfile });
+    const chart = await createOwnedChart("visitor_deepseek_owner");
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -56,7 +68,7 @@ describe("phase 3 DeepSeek interpretation route", () => {
       })
     } as Response);
 
-    const response = await interpretPost(interpretRequest(chart.chart_id));
+    const response = await interpretPost(interpretRequest(chart.chart_id, "visitor_deepseek_owner"));
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -88,10 +100,10 @@ describe("phase 3 DeepSeek interpretation route", () => {
   });
 
   test("falls back to rule copy when the api key is missing", async () => {
-    const chart = createChart({ birth_profile: birthProfile });
+    const chart = await createOwnedChart("visitor_deepseek_missing_key");
     const fetchMock = vi.spyOn(globalThis, "fetch");
 
-    const response = await interpretPost(interpretRequest(chart.chart_id));
+    const response = await interpretPost(interpretRequest(chart.chart_id, "visitor_deepseek_missing_key"));
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -107,7 +119,7 @@ describe("phase 3 DeepSeek interpretation route", () => {
 
   test("falls back to rule copy when DeepSeek returns invalid JSON", async () => {
     process.env.DEEPSEEK_API_KEY = "test_deepseek_key";
-    const chart = createChart({ birth_profile: birthProfile });
+    const chart = await createOwnedChart("visitor_deepseek_invalid_json");
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -115,7 +127,7 @@ describe("phase 3 DeepSeek interpretation route", () => {
       })
     } as Response);
 
-    const response = await interpretPost(interpretRequest(chart.chart_id));
+    const response = await interpretPost(interpretRequest(chart.chart_id, "visitor_deepseek_invalid_json"));
     const payload = await response.json();
 
     expect(response.status).toBe(200);

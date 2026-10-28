@@ -3,23 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.9.0",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "next dev",
     "start": "next start",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "typecheck": "next typegen && tsc --noEmit",
     "build": "next build",
+    "verify:public": "npm run typecheck && npm test -- --maxWorkers=1 --no-file-parallelism && npm run build && npm test -- tests/public-mvp.test.ts tests/report-page-access.test.tsx tests/wechat-share.test.ts tests/wechat-share-route.test.ts tests/phase15-mini-program.test.ts --maxWorkers=1 --no-file-parallelism && npm run test:e2e -- e2e/public-mvp.spec.ts --project=desktop && npm run test:e2e -- e2e/public-mvp.spec.ts --project=mobile",
+    "capture:verify-public-log": "node scripts/capture-verify-public-log.mjs",
+    "export:trae-deck": "node scripts/export-trae-deck.mjs",
+    "verify:trae-submission": "npm run build:trae-submission-pack && node scripts/verify-trae-submission.mjs",
+    "build:trae-submission-pack": "npm run export:trae-deck && node scripts/build-trae-submission-pack.mjs",
     "build:lib": "tsc -p tsconfig.json",
     "generate:fixtures": "tsx scripts/generate-phase1-fixtures.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.35",
+    "@prisma/client": "^6.19.3",
     "iztro": "^2.5.3",
     "lucide-react": "^1.14.0",
-    "next": "^16.2.4",
+    "next": "^16.3.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
+  },
+  "overrides": {
+    "postcss": "^8.5.24",
+    "nanoid": "^3.3.18",
+    "baseline-browser-mapping": "^2.11.0",
+    "deepmerge-ts": "^8.0.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
@@ -29,6 +45,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "jsdom": "^29.1.0",
+    "prisma": "^6.19.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"

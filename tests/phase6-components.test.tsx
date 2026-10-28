@@ -60,7 +60,7 @@ describe("phase 6 immersive UI components", () => {
 
     await waitFor(() => expect(screen.getByText(/Event sent/)).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
-      `/api/immersive/session/${stageSession.session_id}/event`,
+      `/api/ops/immersive/session/${stageSession.session_id}/event`,
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining('"target_palace_id":"wealth"')

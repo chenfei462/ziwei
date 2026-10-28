@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>紫微星垣投资人 Deck</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #111312;
+        --paper: #f6f0df;
+        --paper-soft: #ece4cf;
+        --jade: #1d6f67;
+        --jade-deep: #0e3633;
+        --gold: #c89d4a;
+        --red: #b44c55;
+        --muted: #8e866f;
+        --line: rgba(17, 19, 18, 0.18);
+        --dark-line: rgba(246, 240, 223, 0.18);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: #0d0f0e;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(200, 157, 74, 0.1) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(200, 157, 74, 0.08) 1px, transparent 1px),
+          #101311;
+        background-size: 42px 42px;
+        font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+        letter-spacing: 0;
+      }
+
+      .deck {
+        display: grid;
+        gap: 28px;
+        width: min(100%, 1440px);
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      .slide {
+        position: relative;
+        min-height: min(720px, calc((100vw - 56px) * 9 / 16));
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border: 1px solid var(--dark-line);
+        border-radius: 10px;
+        background:
+          linear-gradient(135deg, rgba(246, 240, 223, 0.97), rgba(236, 228, 207, 0.94)),
+          var(--paper);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+      }
+
+      .slide.dark {
+        color: var(--paper);
+        background:
+          linear-gradient(135deg, rgba(14, 54, 51, 0.98), rgba(17, 19, 18, 0.97)),
+          var(--jade-deep);
+      }
+
+      .slide-inner {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 22px;
+        padding: 54px 64px 44px;
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 22px;
+        border: 1px solid rgba(200, 157, 74, 0.34);
+        border-radius: 8px;
+        pointer-events: none;
+      }
+
+      .slide.dark::before {
+        border-color: rgba(246, 240, 223, 0.2);
+      }
+
+      .kicker {
+        margin: 0;
+        color: var(--jade);
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .dark .kicker {
+        color: #8ad6ca;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2 {
+        font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 860px;
+        font-size: 72px;
+        line-height: 1.04;
+      }
+
+      h2 {
+        max-width: 900px;
+        font-size: 48px;
+        line-height: 1.08;
+      }
+
+      h3 {
+        color: var(--jade-deep);
+        font-size: 22px;
+      }
+
+      .dark h3 {
+        color: #f6e3b7;
+      }
+
+      .lead {
+        max-width: 880px;
+        color: #3e4238;
+        font-size: 24px;
+        line-height: 1.55;
+      }
+
+      .dark .lead {
+        color: rgba(246, 240, 223, 0.82);
+      }
+
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .dark .footer {
+        color: rgba(246, 240, 223, 0.56);
+      }
+
+      .title-grid {
+        align-self: center;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 46px;
+        align-items: center;
+      }
+
+      .seal-card {
+        display: grid;
+        gap: 18px;
+        border: 1px solid rgba(246, 240, 223, 0.22);
+        border-radius: 8px;
+        background: rgba(246, 240, 223, 0.08);
+        padding: 24px;
+      }
+
+      .seal-card img {
+        width: 100%;
+        aspect-ratio: 1.9 / 1;
+        object-fit: cover;
+        border: 1px solid rgba(246, 240, 223, 0.16);
+        border-radius: 6px;
+      }
+
+      .metric-row,
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .chip,
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.38);
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .dark .chip,
+      .dark .metric {
+        border-color: rgba(246, 240, 223, 0.18);
+        background: rgba(246, 240, 223, 0.08);
+      }
+
+      .metric {
+        border-radius: 8px;
+        min-width: 142px;
+      }
+
+      .metric strong {
+        display: block;
+        color: var(--red);
+        font-size: 28px;
+        line-height: 1.1;
+      }
+
+      .dark .metric strong {
+        color: #f6d38c;
+      }
+
+      .card-grid {
+        align-self: center;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .card-grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card {
+        display: grid;
+        gap: 12px;
+        min-height: 152px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.46);
+        padding: 20px;
+      }
+
+      .dark .card {
+        border-color: rgba(246, 240, 223, 0.16);
+        background: rgba(246, 240, 223, 0.08);
+      }
+
+      .card p,
+      li {
+        color: #484b40;
+        font-size: 18px;
+        line-height: 1.55;
+      }
+
+      .dark .card p,
+      .dark li {
+        color: rgba(246, 240, 223, 0.78);
+      }
+
+      .flow {
+        align-self: center;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .flow-step {
+        min-height: 136px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.44);
+        padding: 18px;
+      }
+
+      .flow-step strong {
+        display: block;
+        color: var(--jade-deep);
+        font-size: 20px;
+        margin-bottom: 10px;
+      }
+
+      .flow-step span {
+        color: #54584d;
+        font-size: 16px;
+        line-height: 1.45;
+      }
+
+      .evidence-layout {
+        align-self: center;
+        display: grid;
+        grid-template-columns: 0.82fr 1.18fr;
+        gap: 22px;
+        align-items: stretch;
+      }
+
+      .screen-frame {
+        display: grid;
+        align-content: center;
+        gap: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #151816;
+        color: var(--paper);
+        padding: 26px;
+      }
+
+      .screen-frame img {
+        width: 100%;
+        border-radius: 6px;
+      }
+
+      .check-list {
+        display: grid;
+        gap: 12px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .check-list li {
+        position: relative;
+        padding-left: 24px;
+      }
+
+      .check-list li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 10px;
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        background: var(--jade);
+      }
+
+      .dark .check-list li::before {
+        background: var(--gold);
+      }
+
+      .ask-panel {
+        align-self: center;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .ask-panel .card {
+        min-height: 212px;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(246, 240, 223, 0.18);
+        border-radius: 999px;
+        background: rgba(246, 240, 223, 0.08);
+        color: rgba(246, 240, 223, 0.82);
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .status::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--gold);
+      }
+
+      .hook-box {
+        border-left: 3px solid var(--gold);
+        background: rgba(246, 240, 223, 0.08);
+        color: rgba(246, 240, 223, 0.9);
+        padding: 14px 16px;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 900px) {
+        .deck {
+          padding: 12px;
+        }
+
+        .slide {
+          min-height: 760px;
+          aspect-ratio: auto;
+        }
+
+        .slide-inner {
+          padding: 36px 30px 30px;
+        }
+
+        h1 {
+          font-size: 48px;
+        }
+
+        h2 {
+          font-size: 34px;
+        }
+
+        .title-grid,
+        .evidence-layout,
+        .ask-panel,
+        .card-grid,
+        .card-grid.three,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .deck {
+          display: block;
+          width: 100%;
+          padding: 0;
+        }
+
+        .slide {
+          width: 100vw;
+          height: 100vh;
+          min-height: 0;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+          page-break-after: always;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide dark">
+        <div class="slide-inner">
+          <p class="kicker">Investor Deck / Trae CN Hackathon</p>
+          <div class="title-grid">
+            <div>
+              <h1>紫微星垣</h1>
+              <p class="lead">一张可解释、可分享、可持续观察的传统文化 AI 观察卡。</p>
+              <p class="hook-box">10 秒钩子：把高门槛紫微斗数做成一张 AI 观察卡，看得懂、能追溯、能脱敏分享，还能连续 7 天复访。</p>
+              <div class="chip-row">
+                <span class="chip">规则可追溯</span>
+                <span class="chip">脱敏默认开启</span>
+                <span class="chip">7 日复访路径</span>
+              </div>
+            </div>
+            <aside class="seal-card">
+              <img src="../../public/share-card-preview.png" alt="星垣观察卡分享预览" />
+              <p>把高门槛紫微斗数转成普通用户看得懂、愿意分享、还能持续复访的 AI 文化体验。</p>
+            </aside>
+          </div>
+          <div class="footer"><span>紫微星垣</span><span>01 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="kicker">Pain</p>
+          <h2>用户不是不感兴趣，而是被门槛、信任和隐私挡在外面。</h2>
+          <div class="card-grid">
+            <article class="card"><h3>看不懂</h3><p>命宫、四化、流年和大限需要翻译成现代生活语言。</p></article>
+            <article class="card"><h3>不敢信</h3><p>泛 AI 占卜缺少规则来源，容易像随机生成。</p></article>
+            <article class="card"><h3>不敢晒</h3><p>完整生日、出生时间和地点属于敏感信息，不适合公开传播。</p></article>
+            <article class="card"><h3>不复访</h3><p>一次性报告容易看完即走，缺少连续观察和社交回流。</p></article>
+          </div>
+          <div class="footer"><span>用户痛点</span><span>02 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="kicker">Product Loop</p>
+          <h2>从一张免费观察卡，延展到分享、复访和私密报告。</h2>
+          <div class="flow">
+            <div class="flow-step"><strong>免费生成</strong><span>生成星垣观察卡，降低首次体验门槛。</span></div>
+            <div class="flow-step"><strong>可信解释</strong><span>展示传统术语、规则来源、现代解释和安全过滤。</span></div>
+            <div class="flow-step"><strong>脱敏分享</strong><span>隐藏生日、时间、地点，只保留安全归因参数。</span></div>
+            <div class="flow-step"><strong>连续复访</strong><span>7 日观察挑战承接留存，私密报告承接转化。</span></div>
+          </div>
+          <div class="footer"><span>产品闭环</span><span>03 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide dark">
+        <div class="slide-inner">
+          <p class="kicker">Differentiation</p>
+          <h2>不是更玄，而是更可解释、更安全、更适合传播。</h2>
+          <div class="card-grid">
+            <article class="card"><h3>比传统排盘更大众</h3><p>先给现代语言摘要，再给专业规则依据。</p></article>
+            <article class="card"><h3>比泛 AI 占卜更可信</h3><p>每段解读都能回到规则 trace、术语和置信提示。</p></article>
+            <article class="card"><h3>比真人咨询更低门槛</h3><p>即时生成、低价、可保存、可复看。</p></article>
+            <article class="card"><h3>比普通测试更安全</h3><p>公开分享默认隐藏生日、出生时间、地点和真实身份。</p></article>
+          </div>
+          <div class="footer"><span>核心差异化</span><span>04 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="kicker">Evidence</p>
+          <h2>已经不是单页 Demo，而是可演示的产品雏形。</h2>
+          <div class="evidence-layout">
+            <div class="screen-frame">
+              <img src="../../public/share-card-preview.png" alt="分享卡预览" />
+              <p>公开产品路径已围绕“星垣观察卡”收敛。</p>
+            </div>
+            <ul class="check-list">
+              <li>公开路径：首页、建卡、命盘结果、分享页、报告页、会员、订单、客服和合规页面。</li>
+              <li>AI 可信表达：规则 trace、现代语言转译、置信提示、安全过滤和 fallback。</li>
+              <li>商业化雏形：标准/高级报告、权益、订单、沙箱支付和客服兜底。</li>
+              <li>工程基础：Next.js、TypeScript、Vitest、Playwright、Prisma/PostgreSQL readiness。</li>
+            </ul>
+          </div>
+          <div class="footer"><span>当前完成度</span><span>05 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="kicker">Growth & Revenue</p>
+          <h2>免费获客、分享扩散、挑战留存、报告转化。</h2>
+          <div class="card-grid three">
+            <article class="card"><h3>获客</h3><p>免费星垣观察卡降低首次体验门槛。</p></article>
+            <article class="card"><h3>传播</h3><p>脱敏分享页适合微信、社群和短视频截图传播。</p></article>
+            <article class="card"><h3>留存</h3><p>7 日观察挑战已具备可演示闭环，下一阶段验证连续打卡。</p></article>
+            <article class="card"><h3>转化</h3><p>标准报告 49 元，高级报告 99 元；会员权益和主题追问承接复购。</p></article>
+            <article class="card"><h3>合作</h3><p>达人、社群、传统文化内容号可作为早期渠道。</p></article>
+            <article class="card"><h3>边界</h3><p>不做医疗、投资、法律、婚恋成败或灾祸预测等高风险判断。</p></article>
+          </div>
+          <div class="footer"><span>增长与变现</span><span>06 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide dark">
+        <div class="slide-inner">
+          <p class="kicker">Validation</p>
+          <h2>30-60 天只验证五个指标，避免继续平均堆功能。</h2>
+          <div class="metric-row">
+            <div class="metric"><strong>60%+</strong>生成完成率</div>
+            <div class="metric"><strong>15%+</strong>分享点击率</div>
+            <div class="metric"><strong>8%+</strong>二次生成率</div>
+            <div class="metric"><strong>20%+</strong>7 日挑战加入率</div>
+            <div class="metric"><strong>5%+</strong>报告意向点击率</div>
+          </div>
+          <p class="lead">阈值是冷启动假设，不伪装成已有数据。目标是用真实种子流量证明：用户愿意生成、愿意分享、愿意回来，并愿意为私密深度报告付费。</p>
+          <div class="footer"><span>近期验证指标</span><span>07 / 08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="kicker">Ask</p>
+          <h2>资源诉求：帮项目完成 30-60 天冷启动验证。</h2>
+          <div class="status-row">
+            <span class="status">已完成：公开主路径 / AI 转译 / 脱敏分享</span>
+            <span class="status">沙箱：报告权益 / 支付闭环</span>
+            <span class="status">待验证：真实流量 / 留存 / 付费转化</span>
+          </div>
+          <div class="ask-panel">
+            <article class="card">
+              <h3>需要什么</h3>
+              <p>种子流量、微信/支付宝/短信配置、内容安全评测、真实用户反馈和赛后投资沟通。</p>
+            </article>
+            <article class="card">
+              <h3>验证产出</h3>
+              <p>30-60 天内交付生成、分享、复访、报告意向和付费转化数据，再决定是否扩大投放和产品化投入。</p>
+            </article>
+          </div>
+          <div class="footer"><span>资源诉求</span><span>08 / 08</span></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,63 +1,141 @@
-import { getShareLandingSnapshot } from "../../../phase13/growth.js";
+import type { Metadata } from "next";
+import { getShareLandingSnapshotAsync } from "../../../phase13/growth.js";
 import type { ShareLandingResponse } from "../../../types.js";
 
 export const dynamic = "force-dynamic";
 
 type ShareLandingPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function ShareLandingPage({ params }: ShareLandingPageProps) {
+export async function generateMetadata({ params }: ShareLandingPageProps): Promise<Metadata> {
   const { id } = await params;
-  let response: ShareLandingResponse | undefined;
   try {
-    response = getShareLandingSnapshot(id);
+    const response = await getShareLandingSnapshotAsync(id);
+    return {
+      title: `${response.snapshot.title} | 紫微星垣`,
+      description: response.snapshot.summary,
+      openGraph: {
+        title: response.snapshot.title,
+        description: response.snapshot.summary,
+        images: [
+          {
+            url: "/share-card-preview.png",
+            width: 1200,
+            height: 630,
+            alt: "紫微星垣今日星垣卡分享预览"
+          }
+        ],
+        type: "article",
+        url: `/share/${id}`
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: response.snapshot.title,
+        description: response.snapshot.summary,
+        images: ["/share-card-preview.png"]
+      }
+    };
   } catch {
-    response = undefined;
+    return {
+      title: "分享不存在 | 紫微星垣",
+      description: "该分享不存在或已经过期。"
+    };
   }
+}
+
+export default async function ShareLandingPage({ params, searchParams }: ShareLandingPageProps) {
+  const { id } = await params;
+  let response: ShareLandingResponse;
+  try {
+    response = await getShareLandingSnapshotAsync(id);
+  } catch {
+    return (
+      <main className="public-page">
+        <section className="public-note">
+          <h1>分享不存在</h1>
+          <p>该分享不存在或已经过期。公开页面不会展示完整出生资料。</p>
+          <a href="/chart/new">创建我的观察卡</a>
+        </section>
+      </main>
+    );
+  }
+  const shareCtaHref = buildShareCtaHref(id, await searchParams);
 
   return (
-    <main className="phase13-page">
-      <section className="workspace-header">
-        <div>
-          <p className="eyebrow">Phase 13 Share Landing</p>
-          <h1>Share Landing</h1>
+    <main className="public-page share-page">
+      <header className="public-nav" aria-label="主导航">
+        <a className="brand-mark" href="/">
+          紫微星垣
+        </a>
+        <nav>
+          <a href="/chart/new">创建我的观察卡</a>
+          <a href="/account">注册/登录</a>
+        </nav>
+      </header>
+      <article className="share-card">
+        <p className="public-kicker">星垣观察卡</p>
+        <h1>{response.snapshot.title}</h1>
+        <p>{response.snapshot.summary}</p>
+        <div className="share-chip-row">
+          {response.snapshot.keywords.map((keyword) => (
+            <span key={keyword}>{keyword}</span>
+          ))}
+          {privacyChips.map((chip) => (
+            <span key={chip}>{chip}</span>
+          ))}
+          {readableSafetyChips(response.snapshot.safety_flags).map((chip) => (
+            <span key={chip}>{chip}</span>
+          ))}
         </div>
-        <div className="status-strip" aria-label="Share privacy">
-          <span>privacy_redaction_required</span>
-          <span>no_video_frame</span>
+        <p className="muted">公开分享默认隐藏完整出生日期、出生时间、精确地点和真实身份。</p>
+        <p className="share-privacy-footnote">紫微星垣会隐藏完整出生资料，只保留安全归因参数用于回流。</p>
+        <div className="share-cta-row">
+          <a className="public-primary-link" href={shareCtaHref}>
+            生成我的隐私观察卡
+          </a>
+          <a className="public-secondary-link" href={shareCtaHref}>
+            加入 7 日观察
+          </a>
         </div>
-      </section>
-      <section className="phase13-layout">
-        {response ? (
-          <article className="phase13-panel">
-            <p className="phase13-kicker">{response.snapshot.version}</p>
-            <h2>{response.snapshot.title}</h2>
-            <p className="muted">{response.snapshot.summary}</p>
-            <div className="phase13-chip-row">
-              {response.snapshot.keywords.map((keyword) => (
-                <span key={keyword}>{keyword}</span>
-              ))}
-              {response.snapshot.safety_flags.map((flag) => (
-                <span key={flag}>{flag}</span>
-              ))}
-            </div>
-            <p className="muted">{response.snapshot.privacy_note}</p>
-          </article>
-        ) : (
-          <article className="phase13-panel">
-            <h2>Share snapshot unavailable</h2>
-            <p className="muted">This share card is missing or expired. Sensitive birth data is not shown on landing pages.</p>
-          </article>
-        )}
-        <aside className="phase13-panel">
-          <h2>Community Safe Share</h2>
-          <p className="muted">
-            Shared cards are cultural entertainment snapshots for light observation. They do not include full birth date, birth time,
-            location detail, camera frames, or concrete event predictions.
-          </p>
-        </aside>
+      </article>
+      <section className="public-note">
+        <h2>边界说明</h2>
+        <p>分享内容仅供娱乐和自我观察参考，不展示完整出生日期、出生时间、精确地点、真实身份或专业决策建议。</p>
       </section>
     </main>
   );
+}
+
+function buildShareCtaHref(id: string, searchParams?: Record<string, string | string[] | undefined>): string {
+  const query = new URLSearchParams({ share_id: id });
+  for (const key of ["channel", "campaign"] as const) {
+    const rawValue = searchParams?.[key];
+    const value = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+    const safeValue = normalizeAttribution(value);
+    if (safeValue) query.set(key, safeValue);
+  }
+  return `/chart/new?${query.toString()}`;
+}
+
+function normalizeAttribution(value: string | undefined): string | undefined {
+  const normalized = value?.trim().slice(0, 64);
+  if (!normalized || !/^[a-zA-Z0-9_-]+$/.test(normalized)) return undefined;
+  return normalized;
+}
+
+const privacyChips = ["已隐藏生日", "已隐藏时间", "已隐藏地点"] as const;
+
+function readableSafetyChips(flags: string[]): string[] {
+  const chips = new Set<string>();
+  for (const flag of flags) {
+    if (flag.includes("daily")) chips.add("仅自我观察");
+    if (flag.includes("absolute")) chips.add("避免绝对化");
+    if (flag.includes("major")) chips.add("重大决策提醒");
+    if (flag.includes("mini")) chips.add("小程序审核友好");
+    if (flag.includes("review")) chips.add("内容安全过滤");
+  }
+  chips.add("隐私脱敏分享");
+  return Array.from(chips);
 }

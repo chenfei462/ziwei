@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phase 11 page compares rule profiles and searches the knowledge graph", async ({ page }) => {
-  await page.goto("/phase11");
+  await page.goto("/internal/phases/phase11");
 
   await expect(page.getByRole("heading", { name: "Phase 11 Rule Profiles And Knowledge Graph" })).toBeVisible();
   await expect(page.locator(".phase11-profile-card").filter({ hasText: "Default Zi Wei v0.1" })).toBeVisible();

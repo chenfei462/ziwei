@@ -9,5 +9,6 @@ function opsQuery(request: Request): string {
   const url = new URL(request.url);
   url.searchParams.set("admin_token", request.headers.get("x-admin-token") ?? "");
   url.searchParams.set("admin_role", request.headers.get("x-admin-role") ?? "support_agent");
+  url.searchParams.set("admin_mfa_code", request.headers.get("x-admin-mfa-code") ?? "");
   return `?${url.searchParams.toString()}`;
 }

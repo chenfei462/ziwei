@@ -32,7 +32,7 @@ const interpretation = interpret({
   include_trace: true
 });
 
-describe("phase 5 beta growth UI", () => {
+describe("internal product signal UI", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -40,7 +40,7 @@ describe("phase 5 beta growth UI", () => {
   test("creates share card, favorite, and report intent from the selected palace", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/beta/share-card")) {
+      if (url.endsWith("/api/ops/product-signals/share-card")) {
         return {
           ok: true,
           json: async () => ({
@@ -58,7 +58,7 @@ describe("phase 5 beta growth UI", () => {
           })
         } as Response;
       }
-      if (url.endsWith("/api/beta/favorite")) {
+      if (url.endsWith("/api/ops/product-signals/favorite")) {
         return {
           ok: true,
           json: async () => ({
@@ -68,7 +68,7 @@ describe("phase 5 beta growth UI", () => {
           })
         } as Response;
       }
-      if (url.endsWith("/api/beta/report-intent")) {
+      if (url.endsWith("/api/ops/product-signals/report-intent")) {
         return {
           ok: true,
           json: async () => ({
@@ -98,7 +98,7 @@ describe("phase 5 beta growth UI", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Beta Growth" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Product Signals" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Generate share card" }));
     await waitFor(() => expect(screen.getByText(/Share card created/)).toBeInTheDocument());
@@ -112,14 +112,14 @@ describe("phase 5 beta growth UI", () => {
     await waitFor(() => expect(screen.getByText(/Report intent recorded/)).toBeInTheDocument());
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/beta/share-card",
+      "/api/ops/product-signals/share-card",
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining('"palace_id":"wealth"')
       })
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/beta/report-intent",
+      "/api/ops/product-signals/report-intent",
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining('"tier_id":"standard_49"')

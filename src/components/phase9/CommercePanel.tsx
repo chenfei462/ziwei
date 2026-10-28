@@ -17,7 +17,7 @@ const consent = {
   cultural_entertainment_only: true
 } as const;
 
-export function CommercePanel({ initialReport, memberId = "member_demo" }: CommercePanelProps) {
+export function CommercePanel({ initialReport, memberId = "member_member" }: CommercePanelProps) {
   const [tierId, setTierId] = useState<ReportTierId>(initialReport.price_tier_hint);
   const [order, setOrder] = useState<Order | undefined>();
   const [checkout, setCheckout] = useState<CheckoutSession | undefined>();
@@ -38,7 +38,7 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
     try {
       const response = await fetch("/api/order/create", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: commerceHeaders(memberId),
         body: JSON.stringify({
           report_id: initialReport.report_id,
           package_id: "single_report",
@@ -69,7 +69,7 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
     try {
       const response = await fetch("/api/checkout/session", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: commerceHeaders(memberId),
         body: JSON.stringify({
           order_id: order.order_id,
           provider: "stripe_checkout",
@@ -110,7 +110,9 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
       setPaymentEvent(event);
       setOrder(event.order);
 
-      const entitlementResponse = await fetch(`/api/entitlement/report/${initialReport.report_id}?member_id=${encodeURIComponent(memberId)}`);
+      const entitlementResponse = await fetch(`/api/entitlement/report/${initialReport.report_id}`, {
+        headers: commerceHeaders(memberId)
+      });
       const entitlementPayload = await entitlementResponse.json();
       if (entitlementResponse.ok) {
         setEntitlement(entitlementPayload as MemberEntitlement);
@@ -126,17 +128,17 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
     <section className="phase9-panel">
       <div className="panel-title-row">
         <CreditCard aria-hidden="true" size={18} />
-        <h2>Commerce MVP</h2>
+        <h2>订单与权益</h2>
       </div>
-      <p className="muted">Sandbox checkout keeps the phase 9 payment loop testable while preserving the Stripe provider boundary.</p>
+      <p className="muted">沙箱结账用于验证订单、支付、权益发放和报告访问闭环，同时保留支付 provider 边界。</p>
 
       <div className="phase9-control-grid">
         <label>
-          Report
+          报告
           <input readOnly value={initialReport.title} />
         </label>
         <label>
-          Tier
+          版本
           <select onChange={(event) => setTierId(event.target.value as ReportTierId)} value={tierId}>
             <option value="starter_19">starter_19</option>
             <option value="standard_49">standard_49</option>
@@ -146,24 +148,24 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
       </div>
 
       <div className="phase9-compliance">
-        <span>service_terms</span>
-        <span>privacy_policy</span>
-        <span>refund_policy</span>
-        <span>cultural_entertainment_only</span>
+        <span>服务条款</span>
+        <span>隐私政策</span>
+        <span>退款规则</span>
+        <span>仅供文化娱乐与自我观察参考</span>
       </div>
 
       <div className="phase9-action-row">
         <button disabled={!isHydrated || isLoading} onClick={createOrder} type="button">
           <ReceiptText aria-hidden="true" size={15} />
-          Create order
+          创建订单
         </button>
         <button disabled={!isHydrated || !order || isLoading} onClick={createCheckout} type="button">
           <ShieldCheck aria-hidden="true" size={15} />
-          Create checkout session
+          创建结账页
         </button>
         <button disabled={!isHydrated || !checkout?.sandbox_webhook || isLoading} onClick={simulatePayment} type="button">
           <FileCheck2 aria-hidden="true" size={15} />
-          Simulate sandbox payment
+          模拟沙箱支付
         </button>
       </div>
 
@@ -195,12 +197,19 @@ export function CommercePanel({ initialReport, memberId = "member_demo" }: Comme
 
       {entitlement?.has_access ? (
         <div className="phase9-access">
-          <strong>Access granted</strong>
-          <span>My reports</span>
-          <span>{entitlement.export_preview_credits} export previews</span>
+          <strong>权益已发放</strong>
+          <span>可查看我的报告</span>
+          <span>{entitlement.export_preview_credits} 次导出预览</span>
           <small>{entitlement.privacy_note}</small>
         </div>
       ) : null}
     </section>
   );
+}
+
+function commerceHeaders(memberId: string): HeadersInit {
+  return {
+    "content-type": "application/json",
+    "x-member-id": memberId
+  };
 }

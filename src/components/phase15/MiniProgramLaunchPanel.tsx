@@ -32,7 +32,6 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           code: "wx_code_phase15_demo",
-          visitor_id: "visitor_phase15_demo",
           channel: "mini_program",
           campaign: "phase15_review_demo"
         })
@@ -50,8 +49,6 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          visitor_id: login?.session.visitor_id ?? "visitor_phase15_demo",
-          member_id: memberId,
           openid_hash: openidHash
         })
       });
@@ -65,7 +62,6 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          member_id: memberId,
           source_type: "daily_theme",
           source_id: "daily_20270816_life",
           title: "Today Stargarden mini program card",
@@ -74,8 +70,7 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
           safety_flags: ["daily_observation_only"],
           mini_program_share_format: "wechat_mini_card",
           channel: "mini_program",
-          campaign: "phase15_review_demo",
-          visitor_id: login?.session.visitor_id ?? "visitor_phase15_demo"
+          campaign: "phase15_review_demo"
         })
       });
       setShare(await readJson<MiniProgramShareCreateResponse>(response, "Mini program share failed."));
@@ -88,7 +83,6 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          member_id: memberId,
           template_type: "daily_stargarden_reminder",
           template_id: "tmpl_daily_phase15",
           consent_granted: true,
@@ -105,7 +99,6 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          member_id: memberId,
           template_type: "daily_stargarden_reminder",
           target_date: "2027-08-16",
           action: "daily_reminder_queued",
@@ -147,7 +140,7 @@ export function MiniProgramLaunchPanel({ memberId }: MiniProgramLaunchPanelProps
       <div className="phase15-shell-card">
         <strong>Native shell plus WebView</strong>
         <span>shell_route: mini-program/pages/index</span>
-        <span>webview_fallback: /phase14</span>
+        <span>webview_fallback: /chart/new</span>
         <span>review_copy: traditional culture self-observation</span>
       </div>
 

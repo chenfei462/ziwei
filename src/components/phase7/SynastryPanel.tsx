@@ -21,7 +21,7 @@ export function SynastryPanel({ primaryChart, partnerChart }: SynastryPanelProps
     setIsLoading(true);
     setError(undefined);
     try {
-      const response = await fetch("/api/synastry/create", {
+      const response = await fetch("/api/ops/synastry/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

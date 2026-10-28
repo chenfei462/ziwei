@@ -1,7 +1,16 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { POST as createChartPost } from "../src/app/api/chart/create/route.js";
-import { POST as synastryPost } from "../src/app/api/synastry/create/route.js";
-import { POST as timelinePost } from "../src/app/api/timeline/interpret/route.js";
+import { POST as opsSynastryPost } from "../src/app/api/ops/synastry/create/route.js";
+import { POST as opsTimelinePost } from "../src/app/api/ops/timeline/interpret/route.js";
+import { handleApiRequest } from "../src/api.js";
+
+const opsHeaders = {
+  "x-admin-token": "phase10_admin_token",
+  "x-admin-role": "content_reviewer",
+  "x-admin-actor": "phase7_ops_route_test"
+};
 
 const primaryChartBody = {
   birth_profile: {
@@ -40,7 +49,28 @@ const partnerChartBody = {
 };
 
 describe("phase 7 synastry and timeline route handlers", () => {
-  test("create synastry and timeline cards from chart snapshots with privacy defaults", async () => {
+  test("keeps synastry and timeline expansion tooling out of the public API tree", () => {
+    expect(existsSync(resolve("src/app/api/synastry")), "public synastry API directory").toBe(false);
+    expect(existsSync(resolve("src/app/api/timeline")), "public timeline API directory").toBe(false);
+
+    const publicSynastry = handleApiRequest("POST", "/api/synastry/create", {
+      mode: "professional",
+      primary: { label: "A", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } },
+      partner: { label: "B", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } }
+    });
+    const publicTimeline = handleApiRequest("POST", "/api/timeline/interpret", {
+      chart_id: "missing",
+      year: 2027,
+      mode: "professional"
+    });
+
+    expect(publicSynastry.status).toBe(404);
+    expect(publicSynastry.body.error).toMatchObject({ code: "ROUTE_NOT_FOUND" });
+    expect(publicTimeline.status).toBe(404);
+    expect(publicTimeline.body.error).toMatchObject({ code: "ROUTE_NOT_FOUND" });
+  });
+
+  test("creates ops-only synastry and timeline cards from chart snapshots with privacy defaults", async () => {
     const primaryResponse = await createChartPost(
       new Request("http://local/api/chart/create", {
         method: "POST",
@@ -57,9 +87,10 @@ describe("phase 7 synastry and timeline route handlers", () => {
     );
     const partner = await partnerResponse.json();
 
-    const synastryResponse = await synastryPost(
-      new Request("http://local/api/synastry/create", {
+    const synastryResponse = await opsSynastryPost(
+      new Request("http://local/api/ops/synastry/create", {
         method: "POST",
+        headers: opsHeaders,
         body: JSON.stringify({
           mode: "professional",
           primary: {
@@ -79,9 +110,10 @@ describe("phase 7 synastry and timeline route handlers", () => {
     );
     const synastry = await synastryResponse.json();
 
-    const timelineResponse = await timelinePost(
-      new Request("http://local/api/timeline/interpret", {
+    const timelineResponse = await opsTimelinePost(
+      new Request("http://local/api/ops/timeline/interpret", {
         method: "POST",
+        headers: opsHeaders,
         body: JSON.stringify({
           chart_id: primary.chart_id,
           chart: primary.chart,
@@ -106,9 +138,10 @@ describe("phase 7 synastry and timeline route handlers", () => {
   });
 
   test("returns shared error envelopes for missing consent and invalid timeline month", async () => {
-    const missingConsentResponse = await synastryPost(
-      new Request("http://local/api/synastry/create", {
+    const missingConsentResponse = await opsSynastryPost(
+      new Request("http://local/api/ops/synastry/create", {
         method: "POST",
+        headers: opsHeaders,
         body: JSON.stringify({
           mode: "professional",
           primary: { label: "A", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } },
@@ -118,9 +151,10 @@ describe("phase 7 synastry and timeline route handlers", () => {
     );
     const missingConsent = await missingConsentResponse.json();
 
-    const invalidMonthResponse = await timelinePost(
-      new Request("http://local/api/timeline/interpret", {
+    const invalidMonthResponse = await opsTimelinePost(
+      new Request("http://local/api/ops/timeline/interpret", {
         method: "POST",
+        headers: opsHeaders,
         body: JSON.stringify({
           chart_id: "missing",
           year: 2027,
@@ -135,5 +169,36 @@ describe("phase 7 synastry and timeline route handlers", () => {
     expect(missingConsent.error).toMatchObject({ code: "SYNASTRY_CONSENT_REQUIRED", field: "consent" });
     expect(invalidMonthResponse.status).toBe(400);
     expect(invalidMonth.error).toMatchObject({ code: "INVALID_TIMELINE_MONTH", field: "month" });
+  });
+
+  test("rejects ops-only synastry and timeline tooling without ops credentials", async () => {
+    const synastryResponse = await opsSynastryPost(
+      new Request("http://local/api/ops/synastry/create", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "professional",
+          primary: { label: "A", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } },
+          partner: { label: "B", chart_id: "missing", consent: { agreed: true, no_sensitive_birth_data: true } }
+        })
+      })
+    );
+    const synastry = await synastryResponse.json();
+    const timelineResponse = await opsTimelinePost(
+      new Request("http://local/api/ops/timeline/interpret", {
+        method: "POST",
+        body: JSON.stringify({
+          chart_id: "missing",
+          year: 2027,
+          month: 5,
+          mode: "professional"
+        })
+      })
+    );
+    const timeline = await timelineResponse.json();
+
+    expect(synastryResponse.status).toBe(401);
+    expect(synastry.error.code).toBe("OPS_AUTH_REQUIRED");
+    expect(timelineResponse.status).toBe(401);
+    expect(timeline.error.code).toBe("OPS_AUTH_REQUIRED");
   });
 });

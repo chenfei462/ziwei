@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { reviewInterpretationSafety } from "./ruleMatcher.js";
+import { productRepository } from "../repositories/productRepository.js";
 import type { InterpretResponse } from "../types.js";
 
 export const deepSeekProvider = "deepseek" as const;
 export const deepSeekModel = "deepseek-v4-flash" as const;
+export const promptVersion = "interpretation_rewrite_v2026_05_25" as const;
 const deepSeekUrl = "https://api.deepseek.com/chat/completions";
 const requestTimeoutMs = 15_000;
 
@@ -36,17 +39,20 @@ type DeepSeekChatResponse = {
 export async function generateDeepSeekInterpretation(base: InterpretResponse): Promise<InterpretResponse> {
   const generation = await requestDeepSeekCopy(base);
   if (generation.status === "fallback") {
+    recordGenerationAttempt(base, "fallback", generation.reason, undefined, base.interpretation.safety_flags);
     return {
       ...base,
       generation: {
         provider: deepSeekProvider,
         model: deepSeekModel,
         status: "fallback",
+        prompt_version: promptVersion,
         reason: generation.reason
       }
     };
   }
 
+  recordGenerationAttempt(base, "generated", undefined, generation.copy, generation.safety_flags);
   return {
     ...base,
     interpretation: {
@@ -59,7 +65,8 @@ export async function generateDeepSeekInterpretation(base: InterpretResponse): P
     generation: {
       provider: deepSeekProvider,
       model: deepSeekModel,
-      status: "generated"
+      status: "generated",
+      prompt_version: promptVersion
     }
   };
 }
@@ -135,6 +142,38 @@ async function requestDeepSeekCopy(base: InterpretResponse): Promise<DeepSeekGen
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function recordGenerationAttempt(
+  base: InterpretResponse,
+  status: "generated" | "fallback",
+  fallbackReason: GenerationFallbackReason | undefined,
+  output: GeneratedCopy | undefined,
+  safetyFlags: string[]
+): void {
+  const inputDigest = digestJson(buildPromptPayload(base));
+  productRepository.saveAiGenerationRecord({
+    generation_id: createId("ai_gen"),
+    provider: deepSeekProvider,
+    model: deepSeekModel,
+    prompt_version: promptVersion,
+    chart_id: base.chart_id,
+    input_digest: inputDigest,
+    output_digest: output ? digestJson(output) : undefined,
+    status,
+    fallback_reason: fallbackReason,
+    safety_flags: unique(safetyFlags),
+    created_at: new Date().toISOString(),
+    privacy_note: "AI generation logs store digests, rule trace ids, status, and safety flags only; raw birth data and raw prompt text are not persisted."
+  });
+}
+
+function digestJson(value: unknown): string {
+  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
+}
+
+function createId(prefix: string): string {
+  return `${prefix}_${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function buildPromptPayload(base: InterpretResponse) {

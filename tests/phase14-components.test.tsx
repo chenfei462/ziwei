@@ -37,7 +37,7 @@ const channelEntry = {
     },
     privacy_note: "full birth date, birth time, location detail, and camera frames hidden."
   },
-  landing_url: "/phase14?channel=wechat_group&campaign=phase14_component&visitor_id=visitor_component",
+  landing_url: "/chart/new?channel=wechat_group&campaign=phase14_component&share_id=share_component",
   privacy
 } satisfies ChannelEntryResponse;
 
@@ -49,6 +49,23 @@ const anonymousLink = {
     openid_placeholder: "openid_reserved_component",
     linked_at: "2027-08-16T00:00:00.000Z",
     privacy_note: "anonymous visitor, member id, and openid placeholder are linked without sensitive birth data."
+  },
+  user: {
+    member_id: "member_phase14_component",
+    display_name: "member_phase14_component",
+    created_at: "2027-08-16T00:00:00.000Z",
+    upgraded_from_visitor_id: "visitor_component",
+    privacy_note: "email and phone are stored as sha256 hashes; full birth data is not stored in user records."
+  },
+  visitor: {
+    visitor_id: "visitor_component",
+    first_seen_at: "2027-08-16T00:00:00.000Z",
+    upgraded_member_id: "member_phase14_component",
+    upgraded_at: "2027-08-16T00:00:00.000Z",
+    privacy_note: "anonymous visitor, member id, and openid placeholder are linked without sensitive birth data."
+  },
+  migrated: {
+    chart_ids: []
   },
   privacy
 } satisfies AnonymousLinkResponse;
@@ -124,6 +141,93 @@ const channelEvent = {
     },
     report_intent_events: 0,
     challenge_join_events: 0,
+    disabled_channels: [],
+    channel_health: [
+      {
+        channel: "wechat_group",
+        status: "watch",
+        event_count: 1,
+        unique_visitors: 1,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "1 tracked event, 0 duplicates, 0 report intent events.",
+        recommendation: "Keep tracking the channel and compare copy, placement, and report intent before scaling.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      },
+      {
+        channel: "mini_program",
+        status: "healthy",
+        event_count: 0,
+        unique_visitors: 0,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "No pause signal detected in aggregate channel events.",
+        recommendation: "Continue normal tracking.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      },
+      {
+        channel: "qr_event",
+        status: "healthy",
+        event_count: 0,
+        unique_visitors: 0,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "No pause signal detected in aggregate channel events.",
+        recommendation: "Continue normal tracking.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      },
+      {
+        channel: "short_video",
+        status: "healthy",
+        event_count: 0,
+        unique_visitors: 0,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "No pause signal detected in aggregate channel events.",
+        recommendation: "Continue normal tracking.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      },
+      {
+        channel: "creator_homepage",
+        status: "healthy",
+        event_count: 0,
+        unique_visitors: 0,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "No pause signal detected in aggregate channel events.",
+        recommendation: "Continue normal tracking.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      },
+      {
+        channel: "organic",
+        status: "healthy",
+        event_count: 0,
+        unique_visitors: 0,
+        duplicate_event_count: 0,
+        duplicate_rate: 0,
+        report_intent_events: 0,
+        conversion_proxy_rate: 0,
+        disabled: false,
+        reason: "No pause signal detected in aggregate channel events.",
+        recommendation: "Continue normal tracking.",
+        privacy_note: "Channel health uses aggregate event counts only."
+      }
+    ],
     privacy
   },
   privacy
@@ -152,6 +256,9 @@ describe("phase 14 channel distribution panel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create channel entry" }));
     await waitFor(() => expect(screen.getByText("channel_entry_ready")).toBeInTheDocument());
+    expect(screen.getByText(/\/chart\/new\?channel=wechat_group/)).toBeInTheDocument();
+    expect(screen.queryByText(/\/phase14/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/visitor_id:/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Link anonymous visitor" }));
     await waitFor(() => expect(screen.getByText("anonymous_linked")).toBeInTheDocument());
@@ -164,10 +271,24 @@ describe("phase 14 channel distribution panel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Load channel dashboard" }));
     await waitFor(() => expect(screen.getByText("total_channel_events: 1")).toBeInTheDocument());
+    expect(vi.mocked(globalThis.fetch).mock.calls[4]?.[0]).toBe("/api/ops/growth/channel-dashboard");
+    expect(screen.getByText("disabled_channels: 0")).toBeInTheDocument();
+    expect(screen.getByText("wechat_group_status: watch")).toBeInTheDocument();
 
     expect(screen.getAllByText("wechat_group").length).toBeGreaterThan(0);
     expect(screen.queryByText("2000-08-16")).not.toBeInTheDocument();
     expect(screen.queryByText("03:30")).not.toBeInTheDocument();
     expect(screen.queryByText("Shanghai")).not.toBeInTheDocument();
+
+    expect(readFetchBodyAt(0)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(2)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(2)).not.toHaveProperty("member_id");
+    expect(readFetchBodyAt(3)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(3)).not.toHaveProperty("member_id");
   });
 });
+
+function readFetchBodyAt(index: number): Record<string, unknown> {
+  const init = vi.mocked(globalThis.fetch).mock.calls[index]?.[1] as RequestInit | undefined;
+  return JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+}

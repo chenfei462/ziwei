@@ -179,12 +179,12 @@ export function PrototypeShell({ initialChart, initialBirthProfile }: PrototypeS
           <span>{interaction.status}</span>
           <span>{isChartApiReady ? "api_chart_ready" : "api_chart_syncing"}</span>
           <span>{chartResponse.chart_id}</span>
-          <a href="/phase7">合盘对照 / 年度主题</a>
-          <a href="/phase8">Reports / Creator</a>
-          <a href="/phase9">Commerce</a>
-          <a href="/phase10">Launch Ops</a>
-          <a href="/phase11">Rules / Knowledge</a>
-          <a href="/phase12">Daily</a>
+          <a href="/internal/phases/phase7">合盘对照 / 年度主题</a>
+          <a href="/internal/phases/phase8">Reports / Creator</a>
+          <a href="/internal/phases/phase9">Commerce</a>
+          <a href="/internal/phases/phase10">Launch Ops</a>
+          <a href="/internal/phases/phase11">Rules / Knowledge</a>
+          <a href="/internal/phases/phase12">Daily</a>
         </div>
       </section>
 

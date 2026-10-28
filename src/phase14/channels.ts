@@ -2,12 +2,18 @@ import { ApiError } from "../errors.js";
 import {
   getChannelShareCardRecord,
   getShareLandingSnapshotRecord,
+  getUserRecord,
+  getAnonymousVisitorRecord,
+  listChartOwnerRecords,
   listChannelGrowthEvents,
   listChannelShareCards,
   saveAnonymousLink,
+  saveAnonymousVisitorRecord,
   saveChannelEntry,
   saveChannelGrowthEvent,
-  saveChannelShareCard
+  saveChannelShareCard,
+  saveChartOwnerRecord,
+  saveUserRecord
 } from "../store.js";
 import {
   channelGrowthEventTypes,
@@ -16,6 +22,7 @@ import {
   type AnonymousLink,
   type AnonymousLinkRequest,
   type AnonymousLinkResponse,
+  type AnonymousVisitor,
   type ChannelDashboardResponse,
   type ChannelDashboardSummary,
   type ChannelEntry,
@@ -27,9 +34,11 @@ import {
   type ChannelShareCreateRequest,
   type ChannelShareCreateResponse,
   type DailyPrivacy,
-  type MiniProgramShareCard
+  type MiniProgramShareCard,
+  type UserAccount
 } from "../types.js";
 import { createShareLandingSnapshot } from "../phase13/growth.js";
+import { createHash } from "node:crypto";
 
 const privacy: DailyPrivacy = {
   hides_full_birth_date: true,
@@ -44,6 +53,7 @@ const anonymousPrivacyNote = "anonymous visitor, member id, and openid placehold
 
 export function createChannelEntry(request: ChannelEntryRequest): ChannelEntryResponse {
   validateChannel(request?.channel);
+  assertChannelEnabled(request.channel);
   const visitorId = normalizeVisitorId(request.visitor_id);
   const campaign = request.campaign ? sanitizeText(request.campaign).slice(0, 80) : undefined;
   const shareId = request.share_id ? sanitizeText(request.share_id).slice(0, 80) : undefined;
@@ -68,11 +78,10 @@ export function createChannelEntry(request: ChannelEntryRequest): ChannelEntryRe
   saveChannelEntry(entry);
   return {
     entry,
-    landing_url: buildLandingUrl("/phase14", {
+    landing_url: buildLandingUrl("/chart/new", {
       channel: entry.channel,
       campaign: entry.campaign,
-      share_id: entry.share_id,
-      visitor_id: entry.visitor_id
+      share_id: entry.share_id
     }),
     privacy
   };
@@ -81,23 +90,48 @@ export function createChannelEntry(request: ChannelEntryRequest): ChannelEntryRe
 export function linkAnonymousMember(request: AnonymousLinkRequest): AnonymousLinkResponse {
   const visitorId = sanitizeRequired(request?.visitor_id, "VISITOR_ID_REQUIRED", "visitor_id is required.", "visitor_id").slice(0, 80);
   const memberId = sanitizeRequired(request.member_id, "MEMBER_ID_REQUIRED", "member_id is required.", "member_id").slice(0, 80);
+  const now = new Date().toISOString();
+  const existingUser = getUserRecord(memberId);
+  const user: UserAccount = {
+    member_id: memberId,
+    display_name: sanitizeText(request.display_name ?? existingUser?.display_name ?? memberId).slice(0, 80),
+    email_hash: request.email ? hashIdentifier(request.email) : existingUser?.email_hash,
+    phone_hash: request.phone ? hashIdentifier(request.phone) : existingUser?.phone_hash,
+    created_at: existingUser?.created_at ?? now,
+    upgraded_from_visitor_id: visitorId,
+    privacy_note: "email and phone are stored as sha256 hashes; full birth data is not stored in user records."
+  };
+  const visitor: AnonymousVisitor = {
+    visitor_id: visitorId,
+    first_seen_at: getAnonymousVisitorRecord(visitorId)?.first_seen_at ?? now,
+    upgraded_member_id: memberId,
+    upgraded_at: now,
+    privacy_note: anonymousPrivacyNote
+  };
   const link: AnonymousLink = {
     link_id: createId("link"),
     visitor_id: visitorId,
     member_id: memberId,
     openid_placeholder: request.openid_placeholder ? sanitizeText(request.openid_placeholder).slice(0, 80) : undefined,
-    linked_at: new Date().toISOString(),
+    linked_at: now,
     privacy_note: anonymousPrivacyNote
   };
+  const migrated = migrateVisitorCharts(visitorId, memberId);
+  saveUserRecord(user);
+  saveAnonymousVisitorRecord(visitor);
   saveAnonymousLink(link);
   return {
     link,
+    user,
+    visitor,
+    migrated,
     privacy
   };
 }
 
 export function createChannelShare(request: ChannelShareCreateRequest): ChannelShareCreateResponse {
   validateChannel(request?.channel);
+  assertChannelEnabled(request.channel);
   validateShareFormat(request?.share_format);
   const share = createShareLandingSnapshot({
     member_id: request.member_id,
@@ -111,8 +145,7 @@ export function createChannelShare(request: ChannelShareCreateRequest): ChannelS
   const campaign = request.campaign ? sanitizeText(request.campaign).slice(0, 80) : undefined;
   const path = buildLandingUrl(`/share/${share.snapshot.share_id}`, {
     channel: request.channel,
-    campaign,
-    visitor_id: request.visitor_id ? sanitizeText(request.visitor_id).slice(0, 80) : undefined
+    campaign
   });
   const channelShare: MiniProgramShareCard = {
     share_id: share.snapshot.share_id,
@@ -136,6 +169,7 @@ export function createChannelShare(request: ChannelShareCreateRequest): ChannelS
 
 export function recordChannelGrowthEvent(request: ChannelGrowthEventRequest): ChannelGrowthEventResponse {
   validateChannel(request?.channel);
+  assertChannelEnabled(request.channel);
   validateChannelEventType(request?.event_type);
   if (request.share_format) validateShareFormat(request.share_format);
   const shareId = request.share_id ? sanitizeText(request.share_id).slice(0, 80) : undefined;
@@ -185,6 +219,7 @@ export function getChannelDashboard(): ChannelDashboardResponse {
 function summarizeChannelDashboard(): ChannelDashboardSummary {
   const events = listChannelGrowthEvents();
   const cards = listChannelShareCards();
+  const disabledChannels = getDisabledChannels();
   const byChannel = Object.fromEntries(channelSources.map((source) => [source, 0])) as ChannelDashboardSummary["by_channel"];
   const byEvent = Object.fromEntries(channelGrowthEventTypes.map((type) => [type, 0])) as ChannelDashboardSummary["by_event"];
   const byShareFormat = Object.fromEntries(channelShareFormats.map((format) => [format, 0])) as ChannelDashboardSummary["by_share_format"];
@@ -205,6 +240,8 @@ function summarizeChannelDashboard(): ChannelDashboardSummary {
     by_share_format: byShareFormat,
     report_intent_events: byEvent.report_intent,
     challenge_join_events: byEvent.challenge_joined,
+    disabled_channels: disabledChannels,
+    channel_health: summarizeChannelHealth(events, disabledChannels),
     privacy
   };
 }
@@ -213,6 +250,82 @@ function validateChannel(channel: unknown): asserts channel is ChannelEntryReque
   if (!channel || !channelSources.includes(channel as never)) {
     throw new ApiError("INVALID_CHANNEL_SOURCE", "channel is invalid.", { field: "channel" });
   }
+}
+
+function assertChannelEnabled(channel: ChannelEntryRequest["channel"]): void {
+  if (!getDisabledChannels().includes(channel)) return;
+  throw new ApiError("CHANNEL_DISABLED", "channel is disabled by growth operations policy.", { field: "channel", status: 403 });
+}
+
+function getDisabledChannels(): ChannelEntryRequest["channel"][] {
+  const configured = (process.env.ZIWEI_DISABLED_CHANNELS ?? "")
+    .split(",")
+    .map((channel) => channel.trim())
+    .filter(Boolean);
+  return unique(configured.filter((channel): channel is ChannelEntryRequest["channel"] => channelSources.includes(channel as never)));
+}
+
+function summarizeChannelHealth(events: ChannelGrowthEvent[], disabledChannels: ChannelEntryRequest["channel"][]): ChannelDashboardSummary["channel_health"] {
+  return channelSources.map((channel) => {
+    const channelEvents = events.filter((event) => event.channel === channel);
+    const uniqueVisitors = new Set(channelEvents.map((event) => event.visitor_id).filter(Boolean)).size;
+    const duplicateCount = channelEvents.filter((event) => event.is_duplicate).length;
+    const reportIntentCount = channelEvents.filter((event) => event.event_type === "report_intent").length;
+    const duplicateRate = channelEvents.length > 0 ? duplicateCount / channelEvents.length : 0;
+    const conversionProxyRate = channelEvents.length > 0 ? reportIntentCount / channelEvents.length : 0;
+    const disabled = disabledChannels.includes(channel);
+    const status = resolveChannelHealthStatus({
+      disabled,
+      eventCount: channelEvents.length,
+      duplicateRate,
+      conversionProxyRate
+    });
+    return {
+      channel,
+      status,
+      event_count: channelEvents.length,
+      unique_visitors: uniqueVisitors,
+      duplicate_event_count: duplicateCount,
+      duplicate_rate: Number(duplicateRate.toFixed(4)),
+      report_intent_events: reportIntentCount,
+      conversion_proxy_rate: Number(conversionProxyRate.toFixed(4)),
+      disabled,
+      reason: buildChannelHealthReason(status, channelEvents.length, duplicateCount, reportIntentCount),
+      recommendation: buildChannelHealthRecommendation(status),
+      privacy_note: "Channel health uses aggregate event counts only; visitor ids, member ids, birth data, contact data, and raw share content are not returned."
+    };
+  });
+}
+
+function resolveChannelHealthStatus(input: {
+  disabled: boolean;
+  eventCount: number;
+  duplicateRate: number;
+  conversionProxyRate: number;
+}): ChannelDashboardSummary["channel_health"][number]["status"] {
+  if (input.disabled) return "paused";
+  if (input.eventCount >= 10 && input.duplicateRate >= 0.5) return "pause_candidate";
+  if (input.eventCount > 0 && (input.duplicateRate > 0 || input.conversionProxyRate === 0)) return "watch";
+  return "healthy";
+}
+
+function buildChannelHealthReason(
+  status: ChannelDashboardSummary["channel_health"][number]["status"],
+  eventCount: number,
+  duplicateCount: number,
+  reportIntentCount: number
+): string {
+  if (status === "paused") return "Channel is paused by operations policy.";
+  if (status === "pause_candidate") return `${duplicateCount} duplicate events among ${eventCount} tracked events.`;
+  if (status === "watch") return `${eventCount} tracked events, ${duplicateCount} duplicates, ${reportIntentCount} report intent events.`;
+  return "No pause signal detected in aggregate channel events.";
+}
+
+function buildChannelHealthRecommendation(status: ChannelDashboardSummary["channel_health"][number]["status"]): string {
+  if (status === "paused") return "Keep the channel paused until campaign owner, cost source, and traffic quality are reviewed.";
+  if (status === "pause_candidate") return "Pause spend or invitations for this channel until duplicate traffic is explained.";
+  if (status === "watch") return "Keep tracking the channel and compare copy, placement, and report intent before scaling.";
+  return "Continue normal tracking.";
 }
 
 function validateShareFormat(format: unknown): asserts format is ChannelShareCreateRequest["share_format"] {
@@ -265,6 +378,25 @@ function sanitizeText(text: string): string {
     .replace(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, "[birth_time_redacted]")
     .replace(/\b(?:Shanghai|Beijing|Guangzhou|Shenzhen|Chengdu|Hangzhou|Nanjing|Wuhan)\b/gi, "[location_redacted]")
     .replace(/data:image\/[a-zA-Z+.-]+;base64,[A-Za-z0-9+/=]+/g, "[image_payload_redacted]");
+}
+
+function migrateVisitorCharts(visitorId: string, memberId: string): { chart_ids: string[] } {
+  const migratedChartIds: string[] = [];
+  for (const owner of listChartOwnerRecords()) {
+    if (owner.visitor_id !== visitorId) continue;
+    saveChartOwnerRecord({
+      chart_id: owner.chart_id,
+      member_id: memberId,
+      created_at: owner.created_at
+    });
+    migratedChartIds.push(owner.chart_id);
+  }
+  return { chart_ids: migratedChartIds };
+}
+
+function hashIdentifier(value: string): string {
+  const normalized = sanitizeText(value).toLowerCase();
+  return `sha256:${createHash("sha256").update(normalized).digest("hex")}`;
 }
 
 function createId(prefix: string): string {

@@ -1,0 +1,639 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  memberId              String         @unique @map("member_id") @db.VarChar(96)
+  displayName           String         @map("display_name") @db.VarChar(120)
+  phoneHash             String?        @map("phone_hash") @db.VarChar(128)
+  emailHash             String?        @map("email_hash") @db.VarChar(128)
+  status                String         @default("active") @db.VarChar(32)
+  privacyVersion        String         @default("2026-05-25") @map("privacy_version") @db.VarChar(32)
+  privacyNote           String         @default("phone, email, and provider identities are stored as hashes.") @map("privacy_note") @db.Text
+  upgradedFromVisitorId String?        @map("upgraded_from_visitor_id") @db.VarChar(96)
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  identities            Identity[]     @relation("UserIdentities")
+  birthProfiles         BirthProfile[] @relation("UserBirthProfiles")
+  reports               Report[]       @relation("UserReports")
+  orders                Order[]        @relation("UserOrders")
+  entitlements          Entitlement[]  @relation("UserEntitlements")
+
+  @@index([phoneHash])
+  @@index([emailHash])
+  @@map("users")
+}
+
+model AnonymousVisitor {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitorId        String    @unique @map("visitor_id") @db.VarChar(96)
+  upgradedMemberId String?   @map("upgraded_member_id") @db.VarChar(96)
+  privacyNote      String    @default("anonymous visitor id only; no raw birth data stored.") @map("privacy_note") @db.Text
+  firstSeenAt      DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  upgradedAt       DateTime? @map("upgraded_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  @@index([upgradedMemberId])
+  @@map("anonymous_visitors")
+}
+
+model AnonymousLink {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  linkId            String   @unique @map("link_id") @db.VarChar(96)
+  visitorId         String   @unique @map("visitor_id") @db.VarChar(96)
+  memberId          String   @map("member_id") @db.VarChar(96)
+  openidPlaceholder String?  @map("openid_placeholder") @db.VarChar(96)
+  linkedAt          DateTime @default(now()) @map("linked_at") @db.Timestamptz(6)
+  privacyNote       String   @default("anonymous visitor, member id, and openid placeholder are linked without sensitive birth data.") @map("privacy_note") @db.Text
+
+  @@index([memberId])
+  @@map("anonymous_links")
+}
+
+model Identity {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identityId       String    @unique @map("identity_id") @db.VarChar(96)
+  memberId         String    @map("member_id") @db.VarChar(96)
+  provider         String    @db.VarChar(32)
+  providerUserHash String    @map("provider_user_hash") @db.VarChar(128)
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  member           User      @relation("UserIdentities", fields: [memberId], references: [memberId], onDelete: Cascade)
+
+  @@unique([provider, providerUserHash])
+  @@index([memberId])
+  @@map("identities")
+}
+
+model SmsVerificationChallenge {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  challengeId       String    @unique @map("challenge_id") @db.VarChar(96)
+  phoneHash         String    @map("phone_hash") @db.VarChar(128)
+  codeHash          String    @map("code_hash") @db.VarChar(128)
+  provider          String    @db.VarChar(40)
+  templateId        String    @map("template_id") @db.VarChar(96)
+  purpose           String    @default("login") @db.VarChar(32)
+  attemptCount      Int       @default(0) @map("attempt_count")
+  maxAttempts       Int       @default(5) @map("max_attempts")
+  deliveryStatus    String    @map("delivery_status") @db.VarChar(40)
+  providerMessageId String?   @map("provider_message_id") @db.VarChar(120)
+  privacyNote       String    @default("raw phone number and verification code are never stored; only sha256 hashes are persisted.") @map("privacy_note") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt        DateTime? @map("consumed_at") @db.Timestamptz(6)
+
+  @@index([phoneHash, expiresAt])
+  @@index([createdAt])
+  @@map("sms_verification_challenges")
+}
+
+model BirthProfile {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  birthProfileId       String   @unique @map("birth_profile_id") @db.VarChar(96)
+  memberId             String?  @map("member_id") @db.VarChar(96)
+  visitorId            String?  @map("visitor_id") @db.VarChar(96)
+  calendarType         String   @map("calendar_type") @db.VarChar(24)
+  birthDateEncrypted   String   @map("birth_date_encrypted") @db.Text
+  birthTimeEncrypted   String   @map("birth_time_encrypted") @db.Text
+  locationEncrypted    String?  @map("location_encrypted") @db.Text
+  timezone             String   @default("Asia/Shanghai") @db.VarChar(64)
+  isLeapMonth          Boolean  @default(false) @map("is_leap_month")
+  trueSolarTimeEnabled Boolean  @default(false) @map("true_solar_time_enabled")
+  genderRule           String   @map("gender_rule") @db.VarChar(40)
+  accuracyNote         String?  @map("accuracy_note") @db.Text
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  member               User?    @relation("UserBirthProfiles", fields: [memberId], references: [memberId], onDelete: Cascade)
+  charts               Chart[]  @relation("BirthProfileCharts")
+
+  @@index([memberId])
+  @@index([visitorId])
+  @@map("birth_profiles")
+}
+
+model Chart {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chartId         String       @unique @map("chart_id") @db.VarChar(96)
+  birthProfileId  String       @map("birth_profile_id") @db.VarChar(96)
+  ruleVersionId   String       @map("rule_version_id") @db.VarChar(96)
+  chartJson       Json         @map("chart_json")
+  normalizedBirth Json         @map("normalized_birth")
+  traceJson       Json         @map("trace_json")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  birthProfile    BirthProfile @relation("BirthProfileCharts", fields: [birthProfileId], references: [birthProfileId], onDelete: Cascade)
+  reports         Report[]     @relation("ChartReports")
+
+  @@index([birthProfileId])
+  @@index([ruleVersionId])
+  @@map("charts")
+}
+
+model ChartOwner {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chartId   String   @unique @map("chart_id") @db.VarChar(96)
+  memberId  String?  @map("member_id") @db.VarChar(96)
+  visitorId String?  @map("visitor_id") @db.VarChar(96)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([memberId])
+  @@index([visitorId])
+  @@map("chart_owners")
+}
+
+model Interpretation {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  interpretationId String   @unique @map("interpretation_id") @db.VarChar(96)
+  chartId          String   @map("chart_id") @db.VarChar(96)
+  palaceId         String   @map("palace_id") @db.VarChar(64)
+  mode             String   @db.VarChar(32)
+  ruleVersionId    String   @map("rule_version_id") @db.VarChar(96)
+  promptVersion    String?  @map("prompt_version") @db.VarChar(64)
+  contentJson      Json     @map("content_json")
+  traceJson        Json     @map("trace_json")
+  safetyFlags      String[] @default([]) @map("safety_flags")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([chartId])
+  @@index([ruleVersionId])
+  @@map("interpretations")
+}
+
+model Report {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId       String          @unique @map("report_id") @db.VarChar(96)
+  chartId        String?         @map("chart_id") @db.VarChar(96)
+  memberId       String?         @map("member_id") @db.VarChar(96)
+  tier           String          @db.VarChar(32)
+  status         String          @db.VarChar(32)
+  currentVersion Int             @default(1) @map("current_version")
+  accessPolicy   String          @default("private") @map("access_policy") @db.VarChar(32)
+  shareSummary   String?         @map("share_summary") @db.Text
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  chart          Chart?          @relation("ChartReports", fields: [chartId], references: [chartId], onDelete: SetNull)
+  member         User?           @relation("UserReports", fields: [memberId], references: [memberId], onDelete: SetNull)
+  versions       ReportVersion[] @relation("ReportVersions")
+  orders         Order[]         @relation("ReportOrders")
+  entitlements   Entitlement[]   @relation("ReportEntitlements")
+
+  @@index([chartId])
+  @@index([memberId])
+  @@index([status])
+  @@map("reports")
+}
+
+model ReportVersion {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportVersionId String   @unique @map("report_version_id") @db.VarChar(96)
+  reportId        String   @map("report_id") @db.VarChar(96)
+  version         Int
+  ruleVersionId   String   @map("rule_version_id") @db.VarChar(96)
+  promptVersion   String?  @map("prompt_version") @db.VarChar(64)
+  generatedAt     DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
+  contentJson     Json     @map("content_json")
+  traceJson       Json     @map("trace_json")
+  reviewStatus    String   @default("pending") @map("review_status") @db.VarChar(32)
+  report          Report   @relation("ReportVersions", fields: [reportId], references: [reportId], onDelete: Cascade)
+
+  @@unique([reportId, version])
+  @@index([ruleVersionId])
+  @@map("report_versions")
+}
+
+model ReportGenerationJob {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId              String   @unique @map("job_id") @db.VarChar(96)
+  memberId           String?  @map("member_id") @db.VarChar(96)
+  visitorId          String?  @map("visitor_id") @db.VarChar(96)
+  reportId           String?  @map("report_id") @db.VarChar(96)
+  status             String   @db.VarChar(32)
+  attemptCount       Int      @map("attempt_count")
+  maxAttempts        Int      @map("max_attempts")
+  requestDigest      String   @map("request_digest") @db.VarChar(128)
+  requestSummaryJson Json     @map("request_summary_json")
+  lastErrorCode      String?  @map("last_error_code") @db.VarChar(96)
+  lastErrorMessage   String?  @map("last_error_message") @db.Text
+  supportTicketId    String?  @map("support_ticket_id") @db.VarChar(96)
+  auditTrailJson     Json     @map("audit_trail_json")
+  privacyNote        String   @map("privacy_note") @db.Text
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([memberId])
+  @@index([visitorId])
+  @@index([reportId])
+  @@index([status])
+  @@map("report_generation_jobs")
+}
+
+model ExportPreview {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exportPreviewId String   @unique @map("export_preview_id") @db.VarChar(96)
+  reportId        String   @map("report_id") @db.VarChar(96)
+  format          String   @db.VarChar(16)
+  previewUrl      String   @map("preview_url") @db.Text
+  storageJson     Json     @map("storage_json")
+  reviewStatus    String   @map("review_status") @db.VarChar(32)
+  orderCreated    Boolean  @default(false) @map("order_created")
+  paymentStatus   String   @map("payment_status") @db.VarChar(32)
+  privacyNote     String   @map("privacy_note") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([reportId])
+  @@index([reviewStatus])
+  @@index([expiresAt])
+  @@map("export_previews")
+}
+
+model Share {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shareId      String    @unique @map("share_id") @db.VarChar(96)
+  sourceType   String    @map("source_type") @db.VarChar(40)
+  sourceId     String    @map("source_id") @db.VarChar(96)
+  memberId     String?   @map("member_id") @db.VarChar(96)
+  visitorId    String?   @map("visitor_id") @db.VarChar(96)
+  snapshotJson Json      @map("snapshot_json")
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([sourceType, sourceId])
+  @@index([memberId])
+  @@map("shares")
+}
+
+model Order {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId             String            @unique @map("order_id") @db.VarChar(96)
+  memberId            String            @map("member_id") @db.VarChar(96)
+  reportId            String            @map("report_id") @db.VarChar(96)
+  packageId           String            @map("package_id") @db.VarChar(40)
+  tierId              String            @map("tier_id") @db.VarChar(40)
+  reportType          String            @map("report_type") @db.VarChar(40)
+  amountCents         Int               @map("amount_cents")
+  currency            String            @default("cny") @db.VarChar(8)
+  status              String            @db.VarChar(32)
+  paymentProvider     String            @map("payment_provider") @db.VarChar(40)
+  checkoutSessionId   String?           @map("checkout_session_id") @db.VarChar(128)
+  refundedAmountCents Int?              @map("refunded_amount_cents")
+  refundReason        String?           @map("refund_reason") @db.Text
+  complianceJson      Json              @map("compliance_json")
+  privacyJson         Json              @map("privacy_json")
+  attributionJson     Json?             @map("attribution_json")
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  fulfilledAt         DateTime?         @map("fulfilled_at") @db.Timestamptz(6)
+  refundedAt          DateTime?         @map("refunded_at") @db.Timestamptz(6)
+  member              User              @relation("UserOrders", fields: [memberId], references: [memberId], onDelete: Restrict)
+  report              Report            @relation("ReportOrders", fields: [reportId], references: [reportId], onDelete: Restrict)
+  checkoutSessions    CheckoutSession[] @relation("OrderCheckoutSessions")
+  paymentEvents       PaymentEvent[]    @relation("OrderPaymentEvents")
+  entitlements        Entitlement[]     @relation("OrderEntitlements")
+  refunds             Refund[]          @relation("OrderRefunds")
+
+  @@index([memberId, status], map: "idx_orders_member_status")
+  @@index([reportId])
+  @@map("orders")
+}
+
+model CheckoutSession {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  checkoutSessionId        String   @unique @map("checkout_session_id") @db.VarChar(128)
+  orderId                  String   @map("order_id") @db.VarChar(96)
+  provider                 String   @db.VarChar(40)
+  providerMode             String   @map("provider_mode") @db.VarChar(32)
+  checkoutUrl              String   @map("checkout_url") @db.Text
+  status                   String   @db.VarChar(32)
+  sandboxWebhookJson       Json?    @map("sandbox_webhook_json")
+  providerRequirementsJson Json     @map("provider_requirements_json")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt                DateTime @map("expires_at") @db.Timestamptz(6)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  order                    Order    @relation("OrderCheckoutSessions", fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@map("checkout_sessions")
+}
+
+model PaymentEvent {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentEventId    String   @unique @map("payment_event_id") @db.VarChar(128)
+  provider          String   @db.VarChar(40)
+  providerEventId   String   @map("provider_event_id") @db.VarChar(128)
+  eventType         String   @map("event_type") @db.VarChar(96)
+  orderId           String?  @map("order_id") @db.VarChar(96)
+  checkoutSessionId String?  @map("checkout_session_id") @db.VarChar(128)
+  signatureVerified Boolean  @default(false) @map("signature_verified")
+  isDuplicate       Boolean  @default(false) @map("is_duplicate")
+  rawPayloadDigest  String   @map("raw_payload_digest") @db.VarChar(128)
+  orderSnapshotJson Json?    @map("order_snapshot_json")
+  receivedAt        DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  order             Order?   @relation("OrderPaymentEvents", fields: [orderId], references: [orderId], onDelete: SetNull)
+
+  @@unique([provider, providerEventId], map: "idx_payment_events_provider_event")
+  @@index([orderId])
+  @@map("payment_events")
+}
+
+model ProviderStatement {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  statementId String   @unique @map("statement_id") @db.VarChar(96)
+  provider    String   @db.VarChar(40)
+  periodStart String   @map("period_start") @db.VarChar(32)
+  periodEnd   String   @map("period_end") @db.VarChar(32)
+  importedBy  String   @map("imported_by") @db.VarChar(96)
+  rowCount    Int      @map("row_count")
+  rowsJson    Json     @map("rows_json")
+  privacyNote String   @map("privacy_note") @db.Text
+  importedAt  DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+
+  @@index([provider, periodStart, periodEnd])
+  @@map("provider_statements")
+}
+
+model Entitlement {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entitlementId      String    @unique @map("entitlement_id") @db.VarChar(96)
+  memberId           String    @map("member_id") @db.VarChar(96)
+  reportId           String    @map("report_id") @db.VarChar(96)
+  sourceOrderId      String    @map("source_order_id") @db.VarChar(96)
+  tierId             String?   @map("tier_id") @db.VarChar(32)
+  accessLevel        String?   @map("access_level") @db.VarChar(40)
+  benefits           String[]  @default([])
+  status             String    @default("active") @db.VarChar(32)
+  credits            Int       @default(0)
+  hasAccess          Boolean   @default(true) @map("has_access")
+  canReadReport      Boolean   @default(true) @map("can_read_report")
+  favoriteEnabled    Boolean   @default(false) @map("favorite_enabled")
+  privacyNote        String    @map("privacy_note") @db.Text
+  reportSnapshotJson Json?     @map("report_snapshot_json")
+  expiresAt          DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  member             User      @relation("UserEntitlements", fields: [memberId], references: [memberId], onDelete: Cascade)
+  report             Report    @relation("ReportEntitlements", fields: [reportId], references: [reportId], onDelete: Cascade)
+  sourceOrder        Order     @relation("OrderEntitlements", fields: [sourceOrderId], references: [orderId], onDelete: Restrict)
+
+  @@unique([memberId, reportId])
+  @@index([sourceOrderId])
+  @@map("entitlements")
+}
+
+model Refund {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refundId                  String   @unique @map("refund_id") @db.VarChar(96)
+  orderId                   String   @map("order_id") @db.VarChar(96)
+  provider                  String   @db.VarChar(40)
+  providerRefundId          String?  @map("provider_refund_id") @db.VarChar(128)
+  amountCents               Int      @map("amount_cents")
+  status                    String   @db.VarChar(32)
+  reason                    String   @db.Text
+  requestedBy               String   @map("requested_by") @db.VarChar(96)
+  providerRefundRequestJson Json?    @map("provider_refund_request_json")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  order                     Order    @relation("OrderRefunds", fields: [orderId], references: [orderId], onDelete: Restrict)
+
+  @@index([orderId])
+  @@map("refunds")
+}
+
+model SupportTicket {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId       String    @unique @map("ticket_id") @db.VarChar(96)
+  memberId       String    @map("member_id") @db.VarChar(96)
+  orderId        String?   @map("order_id") @db.VarChar(96)
+  reportId       String?   @map("report_id") @db.VarChar(96)
+  category       String    @db.VarChar(40)
+  priority       String    @db.VarChar(20)
+  status         String    @db.VarChar(32)
+  subject        String    @db.Text
+  message        String    @db.Text
+  assignee       String?   @db.VarChar(96)
+  consentJson    Json      @map("consent_json")
+  auditTrailJson Json      @map("audit_trail_json")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  @@index([memberId])
+  @@index([status, priority])
+  @@map("support_tickets")
+}
+
+model AnalyticsEvent {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  analyticsEventId String   @unique @map("analytics_event_id") @db.VarChar(96)
+  type             String   @db.VarChar(64)
+  visitorId        String?  @map("visitor_id") @db.VarChar(96)
+  memberId         String?  @map("member_id") @db.VarChar(96)
+  chartId          String?  @map("chart_id") @db.VarChar(96)
+  reportId         String?  @map("report_id") @db.VarChar(96)
+  orderId          String?  @map("order_id") @db.VarChar(96)
+  channelCode      String?  @map("channel_code") @db.VarChar(96)
+  metadataJson     Json     @map("metadata_json")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([type, createdAt])
+  @@index([channelCode])
+  @@map("analytics_events")
+}
+
+model AuditLog {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auditLogId   String   @unique @map("audit_log_id") @db.VarChar(96)
+  actorId      String   @map("actor_id") @db.VarChar(96)
+  actorRole    String   @map("actor_role") @db.VarChar(40)
+  action       String   @db.VarChar(96)
+  targetType   String   @map("target_type") @db.VarChar(64)
+  targetId     String?  @map("target_id") @db.VarChar(96)
+  metadataJson Json     @map("metadata_json")
+  ipHash       String?  @map("ip_hash") @db.VarChar(128)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+model AiGenerationLog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  generationId   String   @unique @map("generation_id") @db.VarChar(96)
+  provider       String   @db.VarChar(40)
+  model          String   @db.VarChar(80)
+  promptVersion  String   @map("prompt_version") @db.VarChar(64)
+  chartId        String?  @map("chart_id") @db.VarChar(96)
+  reportId       String?  @map("report_id") @db.VarChar(96)
+  inputDigest    String   @map("input_digest") @db.VarChar(128)
+  outputDigest   String?  @map("output_digest") @db.VarChar(128)
+  status         String   @db.VarChar(32)
+  fallbackReason String?  @map("fallback_reason") @db.VarChar(80)
+  safetyFlags    String[] @default([]) @map("safety_flags")
+  privacyNote    String   @map("privacy_note") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([chartId])
+  @@index([reportId])
+  @@map("ai_generation_logs")
+}
+
+model FollowUpQuota {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quotaKey    String   @unique @map("quota_key") @db.VarChar(160)
+  subjectId   String   @map("subject_id") @db.VarChar(96)
+  plan        String   @db.VarChar(16)
+  windowStart DateTime @map("window_start") @db.Date
+  quotaLimit  Int      @map("quota_limit")
+  used        Int      @default(0)
+  privacyNote String   @map("privacy_note") @db.Text
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([subjectId, windowStart])
+  @@index([plan])
+  @@map("follow_up_quotas")
+}
+
+model ContentReviewRecord {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId     String   @unique @map("review_id") @db.VarChar(96)
+  reportId     String   @map("report_id") @db.VarChar(96)
+  sourceType   String   @map("source_type") @db.VarChar(64)
+  sourceId     String   @map("source_id") @db.VarChar(96)
+  status       String   @db.VarChar(32)
+  blockedTerms String[] @default([]) @map("blocked_terms")
+  privacyFlags String[] @default([]) @map("privacy_flags")
+  safetyFlags  String[] @default([]) @map("safety_flags")
+  reviewerId   String?  @map("reviewer_id") @db.VarChar(96)
+  notes        String[] @default([])
+  checkedAt    DateTime @default(now()) @map("checked_at") @db.Timestamptz(6)
+
+  @@index([reportId])
+  @@index([sourceType, sourceId])
+  @@index([status])
+  @@map("content_review_records")
+}
+
+model RuleVersion {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ruleVersionId String    @unique @map("rule_version_id") @db.VarChar(96)
+  profileId     String    @map("profile_id") @db.VarChar(96)
+  label         String    @db.VarChar(120)
+  status        String    @db.VarChar(32)
+  activeDefault Boolean   @default(false) @map("active_default")
+  configJson    Json      @map("config_json")
+  releasedAt    DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([activeDefault, updatedAt])
+  @@map("rule_versions")
+}
+
+model AdminAccount {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId     String    @unique @map("admin_id") @db.VarChar(96)
+  role        String    @db.VarChar(40)
+  displayName String    @map("display_name") @db.VarChar(120)
+  mfaEnabled  Boolean   @default(false) @map("mfa_enabled")
+  status      String    @default("active") @db.VarChar(32)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  @@index([role, status])
+  @@map("admin_accounts")
+}
+
+model OpsAction {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opsActionId           String    @unique @map("ops_action_id") @db.VarChar(96)
+  actorId               String    @map("actor_id") @db.VarChar(96)
+  action                String    @db.VarChar(96)
+  targetType            String    @map("target_type") @db.VarChar(64)
+  targetId              String?   @map("target_id") @db.VarChar(96)
+  requiresSecondConfirm Boolean   @default(false) @map("requires_second_confirm")
+  confirmedAt           DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  metadataJson          Json      @map("metadata_json")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@map("ops_actions")
+}
+
+model ChannelAttribution {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attributionId String    @unique @map("attribution_id") @db.VarChar(96)
+  visitorId     String    @map("visitor_id") @db.VarChar(96)
+  memberId      String?   @map("member_id") @db.VarChar(96)
+  channel       String    @db.VarChar(64)
+  campaign      String?   @db.VarChar(96)
+  shareId       String?   @map("share_id") @db.VarChar(96)
+  referrerHash  String?   @map("referrer_hash") @db.VarChar(128)
+  disabledAt    DateTime? @map("disabled_at") @db.Timestamptz(6)
+  metadataJson  Json      @map("metadata_json")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([channel, campaign])
+  @@index([visitorId])
+  @@map("channel_attributions")
+}
+
+model WechatSession {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId   String   @unique @map("session_id") @db.VarChar(96)
+  memberId    String   @map("member_id") @db.VarChar(96)
+  visitorId   String   @map("visitor_id") @db.VarChar(96)
+  openidHash  String   @map("openid_hash") @db.VarChar(128)
+  unionidHash String?  @map("unionid_hash") @db.VarChar(128)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([openidHash, memberId])
+  @@index([memberId])
+  @@map("wechat_sessions")
+}
+
+model WechatOpenIdBinding {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bindingId   String   @unique @map("binding_id") @db.VarChar(96)
+  openidHash  String   @unique @map("openid_hash") @db.VarChar(128)
+  visitorId   String   @map("visitor_id") @db.VarChar(96)
+  memberId    String   @map("member_id") @db.VarChar(96)
+  linkedAt    DateTime @default(now()) @map("linked_at") @db.Timestamptz(6)
+  isDuplicate Boolean  @default(false) @map("is_duplicate")
+  privacyNote String   @map("privacy_note") @db.Text
+
+  @@index([memberId])
+  @@index([visitorId])
+  @@map("wechat_openid_bindings")
+}
+
+model DataDeletionRequest {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deletionRequestId String    @unique @map("deletion_request_id") @db.VarChar(96)
+  memberId          String?   @map("member_id") @db.VarChar(96)
+  visitorId         String?   @map("visitor_id") @db.VarChar(96)
+  ticketId          String?   @map("ticket_id") @db.VarChar(96)
+  status            String    @db.VarChar(32)
+  scope             String    @db.VarChar(64)
+  requestedAt       DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+  auditLogId        String?   @map("audit_log_id") @db.VarChar(96)
+  auditTrailJson    Json      @map("audit_trail_json")
+  privacyNote       String    @map("privacy_note") @db.Text
+
+  @@index([memberId])
+  @@index([visitorId])
+  @@index([status])
+  @@map("data_deletion_requests")
+}

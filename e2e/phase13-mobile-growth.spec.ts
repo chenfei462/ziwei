@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phase 13 page completes mobile PWA growth and share landing flow", async ({ page }) => {
-  await page.goto("/phase13");
+  await page.goto("/internal/phases/phase13");
 
   await expect(page.getByRole("heading", { name: "Phase 13 Mobile Growth" })).toBeVisible();
   await expect(page.getByText("pwa_mobile_v0.1")).toBeVisible();
@@ -25,8 +25,8 @@ test("phase 13 page completes mobile PWA growth and share landing flow", async (
   const shareHref = await page.getByRole("link", { name: "Open share landing" }).getAttribute("href");
   expect(shareHref).toMatch(/^\/share\//);
   await page.goto(shareHref ?? "/share/missing");
-  await expect(page.getByRole("heading", { name: "Share Landing" })).toBeVisible();
-  await expect(page.getByText("daily_observation_only")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Daily Stargarden card" })).toBeVisible();
+  await expect(page.getByText("仅自我观察")).toBeVisible();
 
   await expect(page.getByText("2000-08-16")).toHaveCount(0);
   await expect(page.getByText("03:30")).toHaveCount(0);

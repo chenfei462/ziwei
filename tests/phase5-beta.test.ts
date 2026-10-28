@@ -46,7 +46,7 @@ const feedback: ClosedTestFeedbackRequest = {
   }
 };
 
-describe("phase 5 beta growth and commercialization validation", () => {
+describe("internal product signal and commercialization validation", () => {
   beforeEach(() => {
     clearChartsForTests();
     clearFeedbackForTests();
@@ -81,7 +81,7 @@ describe("phase 5 beta growth and commercialization validation", () => {
     expect(serialized).not.toContain("data:image/");
   });
 
-  test("stores favorites and report intent as intent-only beta signals", () => {
+  test("stores favorites and report intent as intent-only product signals", () => {
     const chart = createChart({ birth_profile: birthProfile });
 
     const favorite = saveFavoriteSnapshot({
@@ -113,7 +113,7 @@ describe("phase 5 beta growth and commercialization validation", () => {
     expect(dashboard.report_price_interest.standard_49).toBe(1);
   });
 
-  test("combines phase 4 feedback with beta activation, share, favorite, and report metrics", () => {
+  test("combines internal feedback with activation, share, favorite, and report metrics", () => {
     const chart = createChart({ birth_profile: birthProfile });
     submitClosedTestFeedback({ ...feedback, chart_id: chart.chart_id });
     createShareCard({

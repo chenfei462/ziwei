@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phase 15 page completes formal mini program review and launch flow", async ({ page }) => {
-  await page.goto("/phase15");
+  await page.goto("/internal/phases/phase15");
 
   await expect(page.getByRole("heading", { name: "Phase 15 Mini Program Review" })).toBeVisible();
   await expect(page.getByText("native_shell_v0.1")).toBeVisible();

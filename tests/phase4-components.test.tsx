@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { FeedbackPanel } from "../src/components/phase4/FeedbackPanel.js";
 import { ClosedTestNotice } from "../src/components/phase4/ClosedTestNotice.js";
 
-describe("phase 4 feedback UI", () => {
+describe("internal feedback UI", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -49,7 +49,7 @@ describe("phase 4 feedback UI", () => {
 
     await waitFor(() => expect(screen.getByText(/反馈已记录/)).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/feedback",
+      "/api/ops/internal-feedback",
       expect.objectContaining({
         method: "POST",
         headers: { "content-type": "application/json" },

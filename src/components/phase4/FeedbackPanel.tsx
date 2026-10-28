@@ -74,7 +74,7 @@ export function FeedbackPanel({ sessionId, chartId, completedTasks }: FeedbackPa
         }
       };
 
-      const submitted = await fetch("/api/feedback", {
+      const submitted = await fetch("/api/ops/internal-feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)

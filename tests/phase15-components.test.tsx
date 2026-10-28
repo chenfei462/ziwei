@@ -164,9 +164,24 @@ describe("phase 15 mini program launch panel", () => {
     await waitFor(() => expect(screen.getByText("review_status: materials_ready")).toBeInTheDocument());
 
     expect(screen.getByText("fallback_to_h5: true")).toBeInTheDocument();
+    expect(screen.queryByText(/\/phase14/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/visitor_id=/)).not.toBeInTheDocument();
     expect(screen.queryByText("2000-08-16")).not.toBeInTheDocument();
     expect(screen.queryByText("03:30")).not.toBeInTheDocument();
     expect(screen.queryByText("Shanghai")).not.toBeInTheDocument();
     expect(screen.queryByText("wx_code_phase15_component")).not.toBeInTheDocument();
+
+    expect(readFetchBodyAt(0)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(1)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(1)).not.toHaveProperty("member_id");
+    expect(readFetchBodyAt(2)).not.toHaveProperty("visitor_id");
+    expect(readFetchBodyAt(2)).not.toHaveProperty("member_id");
+    expect(readFetchBodyAt(3)).not.toHaveProperty("member_id");
+    expect(readFetchBodyAt(4)).not.toHaveProperty("member_id");
   });
 });
+
+function readFetchBodyAt(index: number): Record<string, unknown> {
+  const init = vi.mocked(globalThis.fetch).mock.calls[index]?.[1] as RequestInit | undefined;
+  return JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+}

@@ -1,4 +1,5 @@
 import { ApiError } from "../errors.js";
+import { productRepository } from "../repositories/productRepository.js";
 import {
   getChallengeProgressRecord,
   getShareLandingSnapshotRecord,
@@ -6,8 +7,7 @@ import {
   listDailyCheckIns,
   listReferralEvents,
   saveChallengeProgress,
-  saveReferralEvent,
-  saveShareLandingSnapshot
+  saveReferralEvent
 } from "../store.js";
 import {
   communityChallengeTypes,
@@ -114,14 +114,14 @@ export function createShareLandingSnapshot(request: ShareCreateRequest): ShareCr
     version: "v0.1",
     source_type: request.source_type,
     source_id: sanitizeText(request.source_id),
-    title: sanitizeText(request.title).slice(0, 120),
-    summary: sanitizeText(request.summary).slice(0, 300),
-    keywords: unique((request.keywords ?? []).map(sanitizeText).filter(Boolean)).slice(0, 8),
+    title: sanitizeShareText(request.title).slice(0, 120),
+    summary: sanitizeShareText(request.summary).slice(0, 300),
+    keywords: unique((request.keywords ?? []).map(sanitizeShareText).filter(Boolean)).slice(0, 8),
     safety_flags: unique(["daily_observation_only", "privacy_redaction_required", ...(request.safety_flags ?? []).map(sanitizeText)]).slice(0, 8),
     created_at: new Date().toISOString(),
     privacy_note: privacyNote
   };
-  saveShareLandingSnapshot(snapshot);
+  productRepository.saveShareLandingSnapshot(snapshot);
   return {
     share_url: `/share/${snapshot.share_id}`,
     snapshot,
@@ -130,7 +130,18 @@ export function createShareLandingSnapshot(request: ShareCreateRequest): ShareCr
 }
 
 export function getShareLandingSnapshot(shareId: string): ShareLandingResponse {
-  const snapshot = getShareLandingSnapshotRecord(sanitizeText(shareId));
+  const snapshot = productRepository.getShareLandingSnapshot(sanitizeText(shareId));
+  if (!snapshot) {
+    throw new ApiError("SHARE_SNAPSHOT_NOT_FOUND", "share snapshot not found.", { field: "share_id", status: 404 });
+  }
+  return {
+    snapshot,
+    privacy
+  };
+}
+
+export async function getShareLandingSnapshotAsync(shareId: string): Promise<ShareLandingResponse> {
+  const snapshot = await productRepository.getShareLandingSnapshotAsync(sanitizeText(shareId));
   if (!snapshot) {
     throw new ApiError("SHARE_SNAPSHOT_NOT_FOUND", "share snapshot not found.", { field: "share_id", status: 404 });
   }
@@ -208,7 +219,10 @@ export function checkInChallenge(request: ChallengeCheckInRequest): ChallengeChe
   const memberId = normalizeMemberId(request.member_id);
   const challenge = getCommunityChallengeOrThrow(request.challenge_id);
   const existing = getChallengeProgressRecord(memberId, challenge.challenge_id) ?? joinChallenge({ member_id: memberId, challenge_id: challenge.challenge_id }).progress;
-  const currentCount = Math.min(challenge.target_count, existing.current_count + 1);
+  const checkInRef = normalizeCheckInRef(request.check_in_ref, challenge.challenge_id);
+  const existingCheckInRefs = unique([...(existing.checked_in_refs ?? []), existing.last_check_in_ref].filter((ref): ref is string => Boolean(ref)));
+  const alreadyCheckedIn = existingCheckInRefs.includes(checkInRef);
+  const currentCount = alreadyCheckedIn ? existing.current_count : Math.min(challenge.target_count, existing.current_count + 1);
   const completed = currentCount >= challenge.target_count;
   const progress: ChallengeProgress = {
     ...existing,
@@ -216,7 +230,8 @@ export function checkInChallenge(request: ChallengeCheckInRequest): ChallengeChe
     status: completed ? "completed" : "active",
     target_count: challenge.target_count,
     completed_at: completed ? existing.completed_at ?? new Date().toISOString() : undefined,
-    last_check_in_ref: request.check_in_ref ? sanitizeText(request.check_in_ref) : existing.last_check_in_ref,
+    last_check_in_ref: alreadyCheckedIn ? existing.last_check_in_ref ?? checkInRef : checkInRef,
+    checked_in_refs: alreadyCheckedIn ? existingCheckInRefs : [...existingCheckInRefs, checkInRef],
     privacy_note: privacyNote
   };
   saveChallengeProgress(progress);
@@ -338,7 +353,30 @@ function previousDate(date: string): string {
 }
 
 function currentDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return currentBusinessDateString();
+}
+
+function normalizeCheckInRef(checkInRef: string | undefined, challengeId: string): string {
+  const sanitized = checkInRef ? sanitizeCheckInRef(checkInRef) : "";
+  return sanitized || `${challengeId}:${currentBusinessDateString()}`;
+}
+
+function sanitizeCheckInRef(checkInRef: string): string {
+  return String(checkInRef ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9:_-]/g, "")
+    .slice(0, 120);
+}
+
+function currentBusinessDateString(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function normalizeMemberId(memberId: string | undefined): string {
@@ -360,8 +398,12 @@ function sanitizeText(text: string): string {
     .trim()
     .replace(/\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/g, "[birth_date_redacted]")
     .replace(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, "[birth_time_redacted]")
-    .replace(/\b(?:Shanghai|Beijing|Guangzhou|Shenzhen|Chengdu|Hangzhou|Nanjing|Wuhan)\b/gi, "[location_redacted]")
+    .replace(/\b(?:Shanghai|Beijing|Guangzhou|Shenzhen|Chengdu|Hangzhou|Nanjing|Wuhan)\b|(?:北京|上海|广州|深圳|成都|杭州|南京|武汉)/gi, "[location_redacted]")
     .replace(/data:image\/[a-zA-Z+.-]+;base64,[A-Za-z0-9+/=]+/g, "[image_payload_redacted]");
+}
+
+function sanitizeShareText(text: string): string {
+  return sanitizeText(text).replace(/(?:北京|上海|广州|深圳|成都|杭州|南京|武汉)/g, "[location_redacted]");
 }
 
 function createId(prefix: string): string {

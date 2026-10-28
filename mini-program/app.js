@@ -1,7 +1,7 @@
 App({
   globalData: {
-    webBaseUrl: "https://example.com",
-    fallbackPath: "/phase14",
+    webBaseUrl: "https://ziwei-stargarden.cn",
+    fallbackPath: "/chart/new",
     reviewCopy: "Traditional culture star cards and self-observation tool."
   }
 });

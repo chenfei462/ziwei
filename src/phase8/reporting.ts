@@ -1,6 +1,10 @@
+import { createHash } from "node:crypto";
 import { ApiError } from "../errors.js";
 import { interpret } from "../interpret.js";
-import { getChart, getReportDraftRecord, saveExportPreview, saveReportDraft } from "../store.js";
+import { promptVersion } from "../phase3/deepseekClient.js";
+import { createSupportTicket } from "../phase10/launchOps.js";
+import { productRepository } from "../repositories/productRepository.js";
+import { getChart } from "../store.js";
 import {
   interpretationModes,
   reportExportFormats,
@@ -17,6 +21,8 @@ import {
   type ReportDraft,
   type ReportDraftRequest,
   type ReportExportFormat,
+  type ReportGenerationJob,
+  type ReportGenerationJobRequest,
   type ReportSection,
   type ReportTemplate,
   type ReportTrace,
@@ -28,13 +34,21 @@ import {
 const mvpPalaceIds = ["life", "career", "wealth", "spouse", "fortune", "migration"] as const;
 
 const privacyNote = "full birth date, birth time, and location detail hidden by default.";
+const palaceLabels: Record<string, string> = {
+  life: "命宫",
+  career: "官禄宫",
+  wealth: "财帛宫",
+  spouse: "夫妻宫",
+  fortune: "福德宫",
+  migration: "迁移宫"
+};
 
 const templates: Record<ReportType, ReportTemplate> = {
   single_chart: {
     template_id: "single_chart_six_palaces",
     report_type: "single_chart",
     version: "v0.1",
-    title: "Single chart six-palace report",
+    title: "单盘六宫观察报告",
     section_strategy: "Compose six MVP palace interpretations with basis, trace, advice, share blocks, and safety flags.",
     supported_formats: ["html", "pdf"]
   },
@@ -58,6 +72,39 @@ const templates: Record<ReportType, ReportTemplate> = {
 
 const hardTerms = ["一定", "必然", "死亡", "绝症", "破产", "灾祸", "离婚", "分手复合"];
 const sensitiveTopicTerms = ["医疗", "健康", "法律", "投资", "婚姻", "婚恋", "心理", "财务"];
+const exportStorageRequiredEnv = [
+  "ZIWEI_EXPORT_STORAGE_ENDPOINT",
+  "ZIWEI_EXPORT_STORAGE_BUCKET",
+  "ZIWEI_EXPORT_STORAGE_ACCESS_KEY_ID",
+  "ZIWEI_EXPORT_STORAGE_SECRET_ACCESS_KEY",
+  "ZIWEI_EXPORT_STORAGE_PUBLIC_BASE_URL"
+] as const;
+
+export type ExportStorageReadiness = {
+  provider: "local_preview" | "s3_compatible";
+  ready: boolean;
+  production_required: boolean;
+  bucket?: string;
+  endpoint_configured: boolean;
+  public_base_url_configured: boolean;
+  requiredEnv: typeof exportStorageRequiredEnv;
+  blockers: string[];
+};
+
+export function resolveExportStorageReadiness(): ExportStorageReadiness {
+  const productionRequired = process.env.ZIWEI_EXPORT_STORAGE_REQUIRED === "true";
+  const configured = hasExportStorageConfig();
+  return {
+    provider: configured ? "s3_compatible" : "local_preview",
+    ready: configured || !productionRequired,
+    production_required: productionRequired,
+    bucket: configured ? sanitizeText(process.env.ZIWEI_EXPORT_STORAGE_BUCKET ?? "") : undefined,
+    endpoint_configured: Boolean(process.env.ZIWEI_EXPORT_STORAGE_ENDPOINT?.trim()),
+    public_base_url_configured: Boolean(process.env.ZIWEI_EXPORT_STORAGE_PUBLIC_BASE_URL?.trim()),
+    requiredEnv: exportStorageRequiredEnv,
+    blockers: configured || !productionRequired ? [] : ["Configure S3/OSS/COS compatible export storage before production report exports."]
+  };
+}
 
 export function createReportDraft(request: ReportDraftRequest): ReportDraft {
   const reportType = normalizeReportType(request?.report_type);
@@ -76,16 +123,37 @@ export function createReportDraft(request: ReportDraftRequest): ReportDraft {
   const review = reviewReportContent(JSON.stringify({ sections, creator_assets: creatorAssets }), reportId, safetyFlags);
   const chartRef = buildChartRef(reportType, request);
   const ruleMeta = resolveRuleMeta(request);
+  const priceTierHint = reportType === "single_chart" ? "standard_49" : "premium_99";
   const draft: ReportDraft = sanitizeReportDraft({
     report_id: reportId,
     report_type: reportType,
     mode,
+    report_version: 1,
     rule_profile_id: ruleMeta.rule_profile_id,
     rule_version: ruleMeta.rule_version,
     template_id: template.template_id,
     template_version: template.version,
     title: template.title,
     created_at: createdAt,
+    access: {
+      policy: "private_paid",
+      free_summary_enabled: true,
+      required_tier: priceTierHint,
+      owner_can_read: true,
+      entitlement_required_for_private_sections: true
+    },
+    lineage: {
+      report_version_id: `${reportId}_v1`,
+      template_id: template.template_id,
+      template_version: template.version,
+      rule_profile_id: ruleMeta.rule_profile_id,
+      rule_version: ruleMeta.rule_version,
+      prompt_version: promptVersion,
+      generated_at: createdAt,
+      ai_grounding_policy: "local_rules_trace_only"
+    },
+    share_summary: buildFormalShareSummary(reportId, template.title, sections, safetyFlags),
+    export_options: buildReportExportOptions(template.supported_formats),
     chart_ref: chartRef,
     source_refs: {
       synastry_id: request.synastry?.result.synastry_id,
@@ -96,10 +164,10 @@ export function createReportDraft(request: ReportDraftRequest): ReportDraft {
     review,
     privacy_note: privacyNote,
     safety_flags: safetyFlags,
-    price_tier_hint: reportType === "single_chart" ? "standard_49" : "premium_99"
+    price_tier_hint: priceTierHint
   });
 
-  saveReportDraft(draft);
+  productRepository.saveReportDraft(draft);
   return draft;
 }
 
@@ -126,9 +194,79 @@ function resolveRuleMeta(request: ReportDraftRequest): Pick<ReportDraft, "rule_p
   return {};
 }
 
+function buildFormalShareSummary(reportId: string, title: string, sections: ReportSection[], safetyFlags: string[]): ReportDraft["share_summary"] {
+  const sourceSections = sections.slice(0, 2);
+  const summaryPieces = [
+    sourceSections[0]?.title,
+    sourceSections[0]?.basis,
+    sourceSections[1]?.title,
+    "公开分享仅展示脱敏摘要，完整报告需本人权限或付费权益访问。"
+  ]
+    .filter(Boolean)
+    .map((part) => sanitizeText(String(part)));
+
+  return {
+    visibility: "public_redacted",
+    title: sanitizeText(`${title}摘要`),
+    summary: sanitizeText(summaryPieces.join(" ")),
+    source_section_ids: sourceSections.map((section) => sanitizeText(section.section_id)),
+    safety_flags: unique(["avoid_absolute_prediction", "privacy_redaction_required", ...safetyFlags]),
+    privacy_note: privacyNote
+  };
+}
+
+function buildReportExportOptions(formats: readonly ReportExportFormat[]): ReportDraft["export_options"] {
+  const readiness = resolveExportStorageReadiness();
+  return formats.map((format) => ({
+    format,
+    enabled: readiness.ready,
+    entitlement_required: true,
+    storage_provider: readiness.provider,
+    readiness: readiness.ready ? "ready" : "external_config_required"
+  }));
+}
+
 export function getReportDraft(reportId: string): ReportDraft | undefined {
   if (!reportId) return undefined;
-  return getReportDraftRecord(reportId);
+  return productRepository.getReportDraft(reportId);
+}
+
+export function createReportGenerationJob(request: ReportGenerationJobRequest): ReportGenerationJob {
+  const now = new Date().toISOString();
+  const job: ReportGenerationJob = {
+    job_id: createId("report_job"),
+    member_id: request.member_id ? sanitizeText(request.member_id) : undefined,
+    visitor_id: request.visitor_id ? sanitizeText(request.visitor_id) : undefined,
+    status: "queued",
+    attempt_count: 0,
+    max_attempts: normalizeMaxAttempts(request.max_attempts),
+    request_digest: digestReportRequest(request.request),
+    request_summary: summarizeReportRequest(request.request),
+    created_at: now,
+    updated_at: now,
+    audit_trail: [
+      {
+        audit_id: createId("audit"),
+        action: "report_generation_queued",
+        actor_role: "system",
+        created_at: now
+      }
+    ],
+    privacy_note: "Report generation jobs persist request digest, status, retry counters, and support fallback linkage; raw birth data and full report request are not persisted."
+  };
+  return attemptReportGeneration(job, request.request);
+}
+
+export function retryReportGenerationJob(jobId: string, request?: ReportDraftRequest): ReportGenerationJob {
+  const job = productRepository.getReportGenerationJob(jobId);
+  if (!job) {
+    throw new ApiError("REPORT_GENERATION_JOB_NOT_FOUND", "report generation job not found.", { field: "job_id", status: 404 });
+  }
+  if (job.status === "generated" || job.status === "support_fallback") {
+    return job;
+  }
+  const retryRequest = request ?? reportRequestFromSummary(job.request_summary);
+  return attemptReportGeneration(job, retryRequest);
 }
 
 export function createExportPreview(request: ExportPreviewRequest): ExportPreview {
@@ -137,7 +275,7 @@ export function createExportPreview(request: ExportPreviewRequest): ExportPrevie
     throw new ApiError("REPORT_NOT_FOUND", "report_id is required.", { field: "report_id", status: 404 });
   }
 
-  const draft = getReportDraftRecord(request.report_id);
+  const draft = productRepository.getReportDraft(request.report_id);
   if (!draft) {
     throw new ApiError("REPORT_NOT_FOUND", "report draft not found.", { field: "report_id", status: 404 });
   }
@@ -151,11 +289,13 @@ export function createExportPreview(request: ExportPreviewRequest): ExportPrevie
 
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+  const storage = buildExportStorageMetadata(draft.report_id, format, createdAt);
   const preview: ExportPreview = {
     export_preview_id: createId("export"),
     report_id: draft.report_id,
     format,
-    preview_url: `/report/${draft.report_id}?format=${format}`,
+    preview_url: storage.preview_url,
+    storage: storage.metadata,
     created_at: createdAt.toISOString(),
     expires_at: expiresAt.toISOString(),
     review_status: draft.review.status,
@@ -164,8 +304,43 @@ export function createExportPreview(request: ExportPreviewRequest): ExportPrevie
     privacy_note: privacyNote
   };
 
-  saveExportPreview(preview);
+  productRepository.saveExportPreview(preview);
   return preview;
+}
+
+function buildExportStorageMetadata(reportId: string, format: ReportExportFormat, createdAt: Date): { preview_url: string; metadata: NonNullable<ExportPreview["storage"]> } {
+  const contentType = format === "pdf" ? "application/pdf" : "text/html; charset=utf-8";
+  if (hasExportStorageConfig()) {
+    const objectKey = createExportObjectKey(reportId, format, createdAt);
+    const publicBaseUrl = String(process.env.ZIWEI_EXPORT_STORAGE_PUBLIC_BASE_URL).replace(/\/+$/, "");
+    return {
+      preview_url: `${publicBaseUrl}/${objectKey}`,
+      metadata: {
+        provider: "s3_compatible",
+        bucket: sanitizeText(process.env.ZIWEI_EXPORT_STORAGE_BUCKET ?? ""),
+        object_key: objectKey,
+        content_type: contentType,
+        private_acl: true,
+        signed_url_required: true
+      }
+    };
+  }
+  if (process.env.ZIWEI_EXPORT_STORAGE_REQUIRED === "true") {
+    throw new ApiError("EXPORT_STORAGE_NOT_CONFIGURED", "production object storage is not configured for report exports.", {
+      field: "ZIWEI_EXPORT_STORAGE_ENDPOINT",
+      status: 503
+    });
+  }
+  return {
+    preview_url: `/report/${reportId}?format=${format}`,
+    metadata: {
+      provider: "local_preview",
+      object_key: `local-preview/${hashText(`${reportId}:${format}`)}.${format}`,
+      content_type: contentType,
+      private_acl: false,
+      signed_url_required: false
+    }
+  };
 }
 
 export function reviewReportContent(text: string, reportId: string, inheritedSafetyFlags: string[] = []): ContentReviewQueueItem {
@@ -174,10 +349,11 @@ export function reviewReportContent(text: string, reportId: string, inheritedSaf
   const privacyFlags = detectPrivacyFlags(rawText);
   const safetyFlags = unique([...inheritedSafetyFlags, ...detectSafetyFlags(rawText), "avoid_absolute_prediction"]);
   const status = blockedTerms.length || privacyFlags.length ? "blocked" : "approved";
-
-  return {
+  const review: ContentReviewQueueItem = {
     review_id: createId("review"),
     report_id: sanitizeText(reportId || "report_unknown"),
+    source_type: "report",
+    source_id: sanitizeText(reportId || "report_unknown"),
     status,
     blocked_terms: blockedTerms,
     privacy_flags: privacyFlags,
@@ -188,6 +364,8 @@ export function reviewReportContent(text: string, reportId: string, inheritedSaf
         ? ["Export blocked until hard prediction terms and sensitive private data are removed."]
         : ["Content approved for preview export.", "Payment/order creation remains disabled in phase 8."]
   };
+  productRepository.saveContentReviewRecord(review);
+  return review;
 }
 
 function buildSections(
@@ -292,19 +470,20 @@ function buildTimelineSections(reportId: string, timeline: TimelineInterpretResp
 }
 
 function sectionFromInterpretation(reportId: string, response: InterpretResponse): ReportSection {
+  const palaceLabel = labelForReportPalace(response.palace_id);
   return {
     section_id: `${reportId}_${response.palace_id}`,
-    title: sanitizeText(`${response.palace_id} palace`),
+    title: palaceLabel,
     palace_id: response.palace_id,
-    basis: sanitizeText(response.interpretation.basis),
-    interpretation: sanitizeText(response.interpretation.interpretation),
-    scenario: sanitizeText(response.interpretation.scenario),
-    advice: sanitizeText(response.interpretation.advice),
+    basis: localizeReportText(response.interpretation.basis),
+    interpretation: localizeReportText(response.interpretation.interpretation),
+    scenario: localizeReportText(response.interpretation.scenario),
+    advice: localizeReportText(response.interpretation.advice),
     trace: response.trace.map(traceFromInterpretation),
     safety_flags: unique(["avoid_absolute_prediction", ...response.interpretation.safety_flags]),
     share_blocks: [
-      sanitizeText(`${response.palace_id} palace creator card`),
-      sanitizeText(response.interpretation.scenario),
+      sanitizeText(`${palaceLabel}观察卡`),
+      localizeReportText(response.interpretation.scenario),
       privacyNote
     ],
     confidence: response.interpretation.confidence
@@ -321,6 +500,24 @@ function traceFromInterpretation(trace: InterpretationTrace): ReportTrace {
     confidence: trace.confidence,
     safety_flags: unique(["avoid_absolute_prediction", ...trace.safety_flags])
   };
+}
+
+function labelForReportPalace(palaceId: string): string {
+  return palaceLabels[palaceId] ?? palaceId;
+}
+
+function localizeReportText(text: string): string {
+  let localized = sanitizeText(text);
+  for (const [palaceId, palaceLabel] of Object.entries(palaceLabels)) {
+    localized = localized
+      .replaceAll(`${palaceId} palace`, palaceLabel)
+      .replaceAll(`${capitalizeAscii(palaceId)} Palace`, palaceLabel);
+  }
+  return localized.replaceAll(" rule trace", " 规则记录").replaceAll("trace", "规则记录");
+}
+
+function capitalizeAscii(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function traceFromRelationship(trace: TimelineInterpretResponse["trace"][number]): ReportTrace {
@@ -447,6 +644,125 @@ function normalizeExportFormat(format: ReportExportFormat): ReportExportFormat {
     throw new ApiError("INVALID_EXPORT_FORMAT", "format must be html or pdf.", { field: "format" });
   }
   return format;
+}
+
+function attemptReportGeneration(job: ReportGenerationJob, request: ReportDraftRequest): ReportGenerationJob {
+  const attemptedAt = new Date().toISOString();
+  try {
+    const draft = createReportDraft(request);
+    const generated: ReportGenerationJob = {
+      ...job,
+      report_id: draft.report_id,
+      status: "generated",
+      attempt_count: job.attempt_count + 1,
+      last_error_code: undefined,
+      last_error_message: undefined,
+      updated_at: attemptedAt,
+      audit_trail: [
+        ...job.audit_trail,
+        {
+          audit_id: createId("audit"),
+          action: "report_generation_generated",
+          actor_role: "system",
+          created_at: attemptedAt
+        }
+      ]
+    };
+    productRepository.saveReportGenerationJob(generated);
+    return generated;
+  } catch (caught) {
+    const failed = buildFailedReportGenerationJob(job, caught, attemptedAt);
+    productRepository.saveReportGenerationJob(failed);
+    return failed;
+  }
+}
+
+function buildFailedReportGenerationJob(job: ReportGenerationJob, caught: unknown, attemptedAt: string): ReportGenerationJob {
+  const attemptCount = job.attempt_count + 1;
+  const errorCode = caught instanceof ApiError ? caught.code : "REPORT_GENERATION_FAILED";
+  const errorMessage = caught instanceof Error ? caught.message : "report generation failed.";
+  const base: ReportGenerationJob = {
+    ...job,
+    status: attemptCount >= job.max_attempts ? "support_fallback" : "retry_pending",
+    attempt_count: attemptCount,
+    last_error_code: sanitizeText(errorCode),
+    last_error_message: sanitizeText(errorMessage),
+    updated_at: attemptedAt,
+    audit_trail: [
+      ...job.audit_trail,
+      {
+        audit_id: createId("audit"),
+        action: "report_generation_failed",
+        actor_role: "system",
+        note: sanitizeText(errorCode),
+        created_at: attemptedAt
+      }
+    ]
+  };
+  if (base.status !== "support_fallback" || base.support_ticket_id) return base;
+  const ticket = createSupportTicket({
+    member_id: base.member_id ?? base.visitor_id ?? "report_generation_subject",
+    report_id: base.report_id,
+    category: "unfulfilled",
+    priority: "high",
+    subject: "报告生成失败客服兜底",
+    message: `报告生成任务 ${base.job_id} 已达到最大重试次数，需要人工处理或退款关联。错误码：${base.last_error_code ?? "unknown"}`,
+    consent: {
+      agreed: true,
+      no_sensitive_birth_data: true
+    }
+  });
+  return {
+    ...base,
+    support_ticket_id: ticket.ticket_id,
+    audit_trail: [
+      ...base.audit_trail,
+      {
+        audit_id: createId("audit"),
+        action: "report_generation_support_fallback",
+        actor_role: "system",
+        note: `support_ticket_id=${ticket.ticket_id}`,
+        created_at: attemptedAt
+      }
+    ]
+  };
+}
+
+function normalizeMaxAttempts(maxAttempts: number | undefined): number {
+  if (!Number.isFinite(maxAttempts)) return 3;
+  return Math.min(5, Math.max(1, Math.floor(maxAttempts as number)));
+}
+
+function summarizeReportRequest(request: ReportDraftRequest): ReportGenerationJob["request_summary"] {
+  return {
+    report_type: normalizeReportType(request.report_type),
+    mode: normalizeMode(request.mode),
+    chart_id: request.chart_id ? sanitizeText(request.chart_id) : undefined
+  };
+}
+
+function reportRequestFromSummary(summary: ReportGenerationJob["request_summary"]): ReportDraftRequest {
+  return {
+    report_type: summary.report_type,
+    chart_id: summary.chart_id,
+    mode: summary.mode
+  };
+}
+
+function digestReportRequest(request: ReportDraftRequest): string {
+  return `sha256:${hashText(JSON.stringify(summarizeReportRequest(request)))}`;
+}
+
+function hasExportStorageConfig(): boolean {
+  return exportStorageRequiredEnv.every((name) => Boolean(process.env[name]?.trim()));
+}
+
+function createExportObjectKey(reportId: string, format: ReportExportFormat, createdAt: Date): string {
+  return `reports/${format}/${hashText(`${reportId}:${format}:${createdAt.toISOString()}`)}.${format}`;
+}
+
+function hashText(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
 }
 
 function detectSafetyFlags(text: string): string[] {

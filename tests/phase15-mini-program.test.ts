@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   createMiniProgramShare,
@@ -56,12 +58,15 @@ describe("phase 15 formal mini program launch core", () => {
       safety_flags: ["daily_observation_only"],
       mini_program_share_format: "wechat_mini_card",
       channel: "mini_program",
-      campaign: "review_share"
+      campaign: "review_share",
+      visitor_id: "visitor_phase15_share"
     });
 
     expect(share.mini_program_share.share_format).toBe("wechat_mini_card");
     expect(share.mini_program_share.path).toContain("pages/index/index");
     expect(share.mini_program_share.qr_payload).toContain("share_id=");
+    expect(share.mini_program_share.path).not.toContain("visitor_id=");
+    expect(share.share_url).not.toContain("visitor_id=");
     expect(share.mini_program_share.safety_flags).toContain("mini_program_review_required");
     expect(share.snapshot.title).toContain("[birth_date_redacted]");
     expect(share.snapshot.summary).toContain("[birth_time_redacted]");
@@ -123,5 +128,17 @@ describe("phase 15 formal mini program launch core", () => {
         channel: "mini_program"
       })
     ).toThrow(/mini_program_share_format is invalid/);
+  });
+
+  test("mini program shell lands on formal H5 routes without exposing visitor identifiers", () => {
+    const appSource = readFileSync(resolve("mini-program/app.js"), "utf8");
+    const indexSource = readFileSync(resolve("mini-program/pages/index/index.js"), "utf8");
+
+    expect(appSource).toContain('fallbackPath: "/chart/new"');
+    expect(appSource).not.toContain("https://example.com");
+    expect(indexSource).toContain("shareId ? `/share/${shareId}` : fallbackPath");
+    expect(indexSource).toContain('app.globalData.fallbackPath === "/chart/new"');
+    expect(indexSource).toContain("share_id");
+    expect(indexSource).not.toMatch(/\/phase1[45]|visitor_id/);
   });
 });

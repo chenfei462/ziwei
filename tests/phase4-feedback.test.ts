@@ -1,5 +1,7 @@
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test, beforeEach } from "vitest";
-import { clearFeedbackForTests } from "../src/store.js";
+import { clearFeedbackForTests, resolvePersistentStoreDirForRuntime } from "../src/store.js";
 import { submitClosedTestFeedback, summarizeClosedTestFeedback } from "../src/phase4/feedback.js";
 import type { ClosedTestFeedbackRequest, FeedbackIssueCategory } from "../src/types.js";
 
@@ -48,6 +50,35 @@ describe("phase 4 closed-test feedback", () => {
       stores_location_detail: false,
       stores_video_frame: false
     });
+  });
+
+  test("persists sanitized feedback records outside memory storage", () => {
+    const response = submitClosedTestFeedback(validFeedback);
+    const bucketDir = join(
+      resolvePersistentStoreDirForRuntime({
+        cwd: process.cwd(),
+        nodeEnv: process.env.NODE_ENV,
+        processId: process.pid,
+        storeDir: process.env.ZIWEI_STORE_DIR
+      }),
+      "feedback"
+    );
+    const files = existsSync(bucketDir) ? readdirSync(bucketDir).filter((name) => name.endsWith(".json")) : [];
+    const persisted = files.map((name) => JSON.parse(readFileSync(join(bucketDir, name), "utf8")) as { feedback_id?: string; comment?: string });
+
+    expect(persisted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          feedback_id: response.feedback_id,
+          comment: expect.stringContaining("[birth_date_redacted]")
+        })
+      ])
+    );
+    expect(JSON.stringify(persisted)).not.toContain("2000-08-16");
+    expect(JSON.stringify(persisted)).not.toContain("03:30");
+
+    clearFeedbackForTests();
+    expect(existsSync(bucketDir)).toBe(false);
   });
 
   test("summarizes completion, share willingness, issue categories, and phase exit targets", () => {

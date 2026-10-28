@@ -24,6 +24,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 function opsAuth(request: Request) {
   return {
     token: request.headers.get("x-admin-token") ?? "",
-    role: request.headers.get("x-admin-role") ?? "support_agent"
+    role: request.headers.get("x-admin-role") ?? "support_agent",
+    mfa_code: request.headers.get("x-admin-mfa-code") ?? ""
   };
 }

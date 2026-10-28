@@ -32,6 +32,10 @@ const consent = {
   no_video_frame: true
 } as const;
 
+const memberHeaders = {
+  "x-member-id": "member_phase13_route_owner"
+};
+
 describe("phase 13 route handlers", () => {
   beforeEach(() => {
     clearDailyForTests();
@@ -148,5 +152,69 @@ describe("phase 13 route handlers", () => {
     expect(share.error.code).toBe("SHARE_SNAPSHOT_NOT_FOUND");
     expect(challengeJoinResponse.status).toBe(404);
     expect(challengeJoin.error.code).toBe("COMMUNITY_CHALLENGE_NOT_FOUND");
+  });
+
+  test("binds streak and challenge progress to the server-resolved member identity", async () => {
+    const chart = createChart({ birth_profile: birthProfile as never });
+    for (const date of ["2027-08-15", "2027-08-16"]) {
+      const daily = createDailyTheme({
+        chart_id: chart.chart_id,
+        date,
+        mode: "entertainment"
+      });
+      recordDailyCheckIn({
+        daily_theme_id: daily.daily_theme.daily_theme_id,
+        member_id: "member_phase13_route_owner",
+        completed_quest_ids: daily.daily_theme.quests.map((quest) => quest.quest_id),
+        favorite_star_card_ids: ["star_zi_wei"],
+        share_intent: true,
+        consent
+      });
+    }
+
+    const streakResponse = await streakGet(
+      new Request("http://local/api/daily/streak?member_id=member_phase13_query_spoof&as_of_date=2027-08-16", {
+        headers: memberHeaders
+      })
+    );
+    const streak = await streakResponse.json();
+    const challengeJoinResponse = await challengeJoinPost(
+      new Request("http://local/api/challenge/join", {
+        method: "POST",
+        headers: memberHeaders,
+        body: JSON.stringify({ member_id: "member_phase13_body_spoof", challenge_id: "challenge_7_day_stargarden" })
+      })
+    );
+    const challengeJoin = await challengeJoinResponse.json();
+    const challengeListResponse = await challengeListGet(
+      new Request("http://local/api/challenge/list?member_id=member_phase13_query_spoof", {
+        headers: memberHeaders
+      })
+    );
+    const challengeList = await challengeListResponse.json();
+    const challengeCheckInResponse = await challengeCheckInPost(
+      new Request("http://local/api/challenge/check-in", {
+        method: "POST",
+        headers: memberHeaders,
+        body: JSON.stringify({
+          member_id: "member_phase13_body_spoof",
+          challenge_id: "challenge_7_day_stargarden",
+          check_in_ref: "daily_20270816_life"
+        })
+      })
+    );
+    const challengeCheckIn = await challengeCheckInResponse.json();
+
+    expect(streakResponse.status).toBe(200);
+    expect(streak.streak.member_id).toBe("member_phase13_route_owner");
+    expect(streak.streak.current_streak_days).toBe(2);
+    expect(challengeJoinResponse.status).toBe(201);
+    expect(challengeJoin.progress.member_id).toBe("member_phase13_route_owner");
+    expect(JSON.stringify(challengeJoin)).not.toContain("member_phase13_body_spoof");
+    expect(challengeListResponse.status).toBe(200);
+    expect(challengeList.progress.some((progress: { member_id: string }) => progress.member_id === "member_phase13_route_owner")).toBe(true);
+    expect(challengeCheckInResponse.status).toBe(201);
+    expect(challengeCheckIn.progress.member_id).toBe("member_phase13_route_owner");
+    expect(challengeCheckIn.progress.current_count).toBe(1);
   });
 });

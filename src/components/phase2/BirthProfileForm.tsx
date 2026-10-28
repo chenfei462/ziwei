@@ -14,7 +14,7 @@ export function BirthProfileForm({ isLoading, onSubmit }: BirthProfileFormProps)
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     onSubmit({
-      display_name: String(form.get("display_name") || "演示用户"),
+      display_name: String(form.get("display_name") || "我的命盘"),
       calendar_type: String(form.get("calendar_type") || "gregorian") as BirthProfile["calendar_type"],
       birth_date: String(form.get("birth_date") || "2000-08-16"),
       birth_time: String(form.get("birth_time") || "03:30"),
@@ -38,7 +38,7 @@ export function BirthProfileForm({ isLoading, onSubmit }: BirthProfileFormProps)
       </div>
       <label>
         显示名
-        <input name="display_name" defaultValue="演示用户" autoComplete="off" />
+        <input name="display_name" defaultValue="我的命盘" autoComplete="off" />
       </label>
       <div className="form-grid">
         <label>

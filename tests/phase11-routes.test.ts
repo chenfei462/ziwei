@@ -1,9 +1,15 @@
 import { describe, expect, test } from "vitest";
-import { POST as compareRulesPost } from "../src/app/api/chart/compare-rules/route.js";
-import { GET as knowledgeNodeGet } from "../src/app/api/knowledge/node/[id]/route.js";
-import { GET as knowledgeSearchGet } from "../src/app/api/knowledge/search/route.js";
-import { GET as ruleProfileGet } from "../src/app/api/rule-profiles/[id]/route.js";
-import { GET as ruleProfilesGet } from "../src/app/api/rule-profiles/route.js";
+import { POST as compareRulesPost } from "../src/app/api/ops/chart/compare-rules/route.js";
+import { GET as knowledgeNodeGet } from "../src/app/api/ops/knowledge/node/[id]/route.js";
+import { GET as knowledgeSearchGet } from "../src/app/api/ops/knowledge/search/route.js";
+import { GET as ruleProfileGet } from "../src/app/api/ops/rule-profiles/[id]/route.js";
+import { GET as ruleProfilesGet } from "../src/app/api/ops/rule-profiles/route.js";
+
+const opsHeaders = {
+  "x-admin-token": "phase10_admin_token",
+  "x-admin-role": "content_reviewer",
+  "x-admin-actor": "phase11_route_test"
+};
 
 const birthProfile = {
   display_name: "Phase 11 route profile",
@@ -23,15 +29,20 @@ const birthProfile = {
 
 describe("phase 11 route handlers", () => {
   test("serves rule profiles, compares profiles, and searches the knowledge graph", async () => {
-    const profilesResponse = await ruleProfilesGet();
+    const profilesResponse = await ruleProfilesGet(
+      new Request("http://local/api/ops/rule-profiles", {
+        headers: opsHeaders
+      })
+    );
     const profiles = await profilesResponse.json();
-    const profileResponse = await ruleProfileGet(new Request("http://local/api/rule-profiles/default_ziwei_v0_1"), {
+    const profileResponse = await ruleProfileGet(new Request("http://local/api/ops/rule-profiles/default_ziwei_v0_1", { headers: opsHeaders }), {
       params: Promise.resolve({ id: "default_ziwei_v0_1" })
     });
     const profile = await profileResponse.json();
     const compareResponse = await compareRulesPost(
-      new Request("http://local/api/chart/compare-rules", {
+      new Request("http://local/api/ops/chart/compare-rules", {
         method: "POST",
+        headers: opsHeaders,
         body: JSON.stringify({
           birth_profile: birthProfile,
           base_rule_profile_id: "default_ziwei_v0_1",
@@ -40,9 +51,9 @@ describe("phase 11 route handlers", () => {
       })
     );
     const comparison = await compareResponse.json();
-    const searchResponse = await knowledgeSearchGet(new Request("http://local/api/knowledge/search?q=Zi%20Wei&type=star"));
+    const searchResponse = await knowledgeSearchGet(new Request("http://local/api/ops/knowledge/search?q=Zi%20Wei&type=star", { headers: opsHeaders }));
     const search = await searchResponse.json();
-    const nodeResponse = await knowledgeNodeGet(new Request("http://local/api/knowledge/node/star_zi_wei"), {
+    const nodeResponse = await knowledgeNodeGet(new Request("http://local/api/ops/knowledge/node/star_zi_wei", { headers: opsHeaders }), {
       params: Promise.resolve({ id: "star_zi_wei" })
     });
     const node = await nodeResponse.json();
@@ -63,11 +74,11 @@ describe("phase 11 route handlers", () => {
   });
 
   test("returns existing error envelopes for invalid rule profile and node IDs", async () => {
-    const profileResponse = await ruleProfileGet(new Request("http://local/api/rule-profiles/missing"), {
+    const profileResponse = await ruleProfileGet(new Request("http://local/api/ops/rule-profiles/missing", { headers: opsHeaders }), {
       params: Promise.resolve({ id: "missing" })
     });
     const profile = await profileResponse.json();
-    const nodeResponse = await knowledgeNodeGet(new Request("http://local/api/knowledge/node/missing"), {
+    const nodeResponse = await knowledgeNodeGet(new Request("http://local/api/ops/knowledge/node/missing", { headers: opsHeaders }), {
       params: Promise.resolve({ id: "missing" })
     });
     const node = await nodeResponse.json();

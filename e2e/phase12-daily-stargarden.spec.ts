@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phase 12 page completes daily theme, atlas, check-in, and achievement flow", async ({ page }) => {
-  await page.goto("/phase12");
+  await page.goto("/internal/phases/phase12");
 
   await expect(page.getByRole("heading", { name: "Phase 12 Daily Stargarden" })).toBeVisible();
   await expect(page.getByText("today_stargarden_v0.1")).toBeVisible();

@@ -1,7 +1,9 @@
 import { ApiError } from "../errors.js";
+import { productRepository } from "../repositories/productRepository.js";
 import type { RuleProfile } from "../types.js";
 
 export const defaultRuleProfileId = "default_ziwei_v0_1";
+let activeDefaultRuleProfileId = defaultRuleProfileId;
 
 const ruleProfiles: RuleProfile[] = [
   {
@@ -55,16 +57,58 @@ const ruleProfiles: RuleProfile[] = [
 ];
 
 export function listRuleProfileRecords(): RuleProfile[] {
-  return ruleProfiles.map(cloneRuleProfile);
+  const resolvedDefaultProfileId = getDefaultRuleProfileId();
+  return ruleProfiles.map((profile) =>
+    cloneRuleProfile({
+      ...profile,
+      is_default: profile.profile_id === resolvedDefaultProfileId
+    })
+  );
 }
 
 export function getRuleProfileRecord(profileId: string | undefined): RuleProfile {
-  const normalizedId = profileId || defaultRuleProfileId;
+  const normalizedId = profileId || getDefaultRuleProfileId();
   const profile = ruleProfiles.find((item) => item.profile_id === normalizedId);
   if (!profile) {
     throw new ApiError("RULE_PROFILE_NOT_FOUND", "rule profile not found.", { field: "rule_profile_id", status: 404 });
   }
-  return cloneRuleProfile(profile);
+  return cloneRuleProfile({
+    ...profile,
+    is_default: profile.profile_id === activeDefaultRuleProfileId
+  });
+}
+
+export function getDefaultRuleProfileId(): string {
+  try {
+    const persisted = productRepository.getActiveRuleVersionState();
+    if (persisted?.active_default) {
+      activeDefaultRuleProfileId = persisted.profile_id;
+    }
+  } catch {
+    return activeDefaultRuleProfileId;
+  }
+  return activeDefaultRuleProfileId;
+}
+
+export function promoteDefaultRuleProfile(profileId: string): { previous_default_profile_id: string; active_default_profile_id: string; profile: RuleProfile } {
+  const profile = getRuleProfileRecord(profileId);
+  if (profile.consultant_review_status !== "confirmed") {
+    throw new ApiError("RULE_PROFILE_NOT_APPROVED", "rule profile must be consultant-confirmed before it can become the production default.", {
+      field: "profile_id",
+      status: 409
+    });
+  }
+  const previousDefault = activeDefaultRuleProfileId;
+  activeDefaultRuleProfileId = profile.profile_id;
+  return {
+    previous_default_profile_id: previousDefault,
+    active_default_profile_id: activeDefaultRuleProfileId,
+    profile: getRuleProfileRecord(activeDefaultRuleProfileId)
+  };
+}
+
+export function resetRuleProfilesForTests(): void {
+  activeDefaultRuleProfileId = defaultRuleProfileId;
 }
 
 function cloneRuleProfile(profile: RuleProfile): RuleProfile {

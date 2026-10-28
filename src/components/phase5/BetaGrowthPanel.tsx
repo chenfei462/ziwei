@@ -47,7 +47,7 @@ export function BetaGrowthPanel({ chartId, chart, sessionId, selectedPalace, int
     setIsBusy(true);
     setError(undefined);
     try {
-      const response = await postJson<BetaShareCardResponse>("/api/beta/share-card", {
+      const response = await postJson<BetaShareCardResponse>("/api/ops/product-signals/share-card", {
         chart_id: chartId,
         chart,
         palace_id: selectedPalaceId,
@@ -68,12 +68,12 @@ export function BetaGrowthPanel({ chartId, chart, sessionId, selectedPalace, int
     setIsBusy(true);
     setError(undefined);
     try {
-      const response = await postJson<BetaFavoriteResponse>("/api/beta/favorite", {
+      const response = await postJson<BetaFavoriteResponse>("/api/ops/product-signals/favorite", {
         chart_id: chartId,
         chart,
         palace_id: selectedPalaceId,
         session_id: sessionId,
-        note: "Saved from phase 5 beta panel."
+        note: "Saved from internal product signal panel."
       });
       setFavoriteResponse(response);
       if (response.dashboard_snapshot) setDashboard(response.dashboard_snapshot);
@@ -88,13 +88,13 @@ export function BetaGrowthPanel({ chartId, chart, sessionId, selectedPalace, int
     setIsBusy(true);
     setError(undefined);
     try {
-      const response = await postJson<BetaReportIntentResponse>("/api/beta/report-intent", {
+      const response = await postJson<BetaReportIntentResponse>("/api/ops/product-signals/report-intent", {
         chart_id: chartId,
         session_id: sessionId,
         tier_id: tierId,
         intent_level: intentLevel,
         contact_opt_in: false,
-        note: "Phase 5 intent-only validation. No real payment."
+        note: "Internal intent-only validation. No real payment."
       });
       setReportResponse(response);
       if (response.dashboard_snapshot) setDashboard(response.dashboard_snapshot);
@@ -106,13 +106,13 @@ export function BetaGrowthPanel({ chartId, chart, sessionId, selectedPalace, int
   }
 
   return (
-    <section className="beta-growth-panel" data-testid="beta-growth-panel" aria-label="Beta growth validation">
+    <section className="beta-growth-panel" data-testid="beta-growth-panel" aria-label="Internal product signal validation">
       <div className="panel-title-row">
         <BarChart3 aria-hidden="true" size={18} />
-        <h2>Beta Growth</h2>
+        <h2>Product Signals</h2>
       </div>
       <p className="muted">
-        Phase 5 validates sharing, revisit intent, and paid-report interest. Full birth date, birth time, location detail, and camera frames stay hidden.
+        Internal operators can validate sharing, revisit intent, and paid-report interest. Full birth date, birth time, location detail, and camera frames stay hidden.
       </p>
       <div className="beta-current-context">
         <span>{selectedPalace ? selectedPalace.label : "Select a palace first"}</span>
@@ -180,7 +180,7 @@ export function BetaGrowthPanel({ chartId, chart, sessionId, selectedPalace, int
       ) : null}
       <div className="beta-report-sample">
         <FileText aria-hidden="true" size={15} />
-        <span>Report sample remains a preview; real payment, invoices, and order back office are out of scope for phase 5.</span>
+        <span>Report sample remains a preview; real payment, invoices, and order back office stay in the formal commerce flow.</span>
       </div>
       {error ? <p className="error-message">{error}</p> : null}
     </section>
@@ -195,7 +195,7 @@ async function postJson<T>(url: string, payload: Record<string, unknown>): Promi
   });
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error?.message ?? "Beta request failed");
+    throw new Error(body.error?.message ?? "Product signal request failed");
   }
   return body as T;
 }

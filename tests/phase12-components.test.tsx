@@ -198,4 +198,31 @@ describe("phase 12 daily stargarden panel", () => {
     expect(screen.queryByText("03:30")).not.toBeInTheDocument();
     expect(screen.queryByText("Shanghai")).not.toBeInTheDocument();
   });
+
+  test("public variant localizes atlas cards and does not expose internal ids or unlock enums", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => dailyTheme } as Response);
+
+    render(
+      <DailyStargardenPanel
+        chartId="chart_phase12"
+        chartSnapshot={chartSnapshot}
+        initialAtlas={atlas}
+        initialAchievements={achievements}
+        initialDate="2027-08-16"
+        memberId="member_phase12_component"
+        variant="public"
+      />
+    );
+
+    expect(screen.getByText("紫微")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看紫微卡" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("star_zi_wei");
+    expect(document.body.textContent).not.toContain("unlocked");
+
+    fireEvent.click(screen.getByRole("button", { name: "生成今日星垣卡" }));
+
+    await waitFor(() => expect(screen.getByText("仅自我观察")).toBeInTheDocument());
+    expect(document.body.textContent).not.toContain("daily_observation_only");
+    expect(document.body.textContent).not.toContain("default_ziwei_v0_1");
+  });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phase 7 page supports synastry and timeline expansion flows", async ({ page }) => {
-  await page.goto("/phase7");
+  await page.goto("/internal/phases/phase7");
 
   await expect(page.getByRole("heading", { name: "阶段 7 合盘与流年扩展" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "合盘对照" })).toBeVisible();

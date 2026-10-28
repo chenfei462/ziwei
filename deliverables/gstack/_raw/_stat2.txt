@@ -1,0 +1,18 @@
+﻿
+D                         C
+-                         -
+charts                 2295
+product-events         1879
+reports                 920
+share-landings          840
+content-review-records  832
+ai-generation-logs      458
+orders                  423
+checkout-sessions       421
+entitlements            416
+payment-events          416
+chart-owners            357
+ops-order-notes         272
+
+
+
